@@ -1,0 +1,1212 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>既存のアプリをマルチモジュール化する</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/codelab-elements/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14"></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  id=""
+                  title="既存のアプリをマルチモジュール化する"
+                  environment="web"
+                  feedback-link="https://github.com/DroidKaigi/codelab-2020/issues">
+    
+      <google-codelab-step label="前書き" duration="5">
+        <p>このコードラボでは、既存のAndroidアプリをmulti-module project化する方法を学びます。</p>
+<p>このようにapp moduleだけで構成されているprojectを、</p>
+<p class="image-container"><img style="width: 484.00px" src="img\eef75fbea75d277a.png"></p>
+<p>下記の図の通り、multi-module project化します。</p>
+<p class="image-container"><img style="width: 602.00px" src="img\5f80cc1debe751fe.png"></p>
+<h2 is-upgraded>multi-module projectの利点</h2>
+<ul>
+<li>ビルド時間の短縮が期待できます</li>
+<li>適切なレイヤーでmoduleを分ける事で、クラス間の依存関係をクリーンに保てます</li>
+<li>複数バージョン（無料版・有料版など）のアプリをビルドする場合、Build Variantを使わずにそれぞれのバージョンのapp moduleを用意して実現ができます</li>
+<li>Build Variantによる複雑化を防げます</li>
+<li>Android Studioのリファクタリング機能は選択中のBuild Variantしか配慮されませんが、 それぞれのバージョンのapp moduleを用意すれば、この挙動に悩まされることがありません</li>
+<li>各moduleでの関心事を小さく保てます</li>
+<li>例えばWebAPIのレスポンスクラスはrepository moduleまでは意識するが、 repositoryを使うmoduleからはアクセスできない、という制限が可能です</li>
+</ul>
+<h2 is-upgraded>このコードラボで学べること</h2>
+<ul>
+<li>新しいlibrary moduleの追加方法</li>
+<li>既存moduleから別moduleへスムーズにクラスを移動する方法</li>
+<li>release/debugで依存するlibrary moduleを切り替える方法</li>
+<li>app moduleのBuildConfigをlibrary moduleから間接的に参照する方法</li>
+</ul>
+<h2 is-upgraded>必要となる前提知識</h2>
+<ul>
+<li>Kotlinの基礎的な構文についての知識</li>
+<li>build.gradleへの <a href="https://developer.android.com/studio/build/dependencies" target="_blank">ビルド依存関係の追加</a> 方法、apiとimplementationの違い</li>
+<li>Daggerの基礎的な知識</li>
+<li>Daggerの基礎的な知識については、 <a href="https://codelabs.developers.google.com/codelabs/android-dagger/index.html?index=..%2F..index#0" target="_blank">Using Dagger in your Android app</a> を参照して下さい</li>
+</ul>
+<h2 is-upgraded>このコードラボで必要なもの</h2>
+<ul>
+<li><a href="https://developer.android.com/studio/" target="_blank">Android Studio 3.5.3</a>（他のバージョンでも問題なくコードラボは進められる場合はありますが、いくつかの要素がなかったり違う見た目になっている場合があります）</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="セットアップ" duration="5">
+        <h2 is-upgraded>コードのダウンロード</h2>
+<p>以下のリンクからこのコードラボで必要なコードすべてをダウンロードすることができます。</p>
+<p><a href="https://github.com/DroidKaigi/architecture-components-samples/archive/droidkaigi-2020-codelab.zip" target="_blank">Zipをダウンロード</a></p>
+<p>または、以下のコマンドでコマンドラインからGitHubリポジトリをcloneすることもできます。</p>
+<pre>$ git clone https://github.com/DroidKaigi/architecture-components-samples.git</pre>
+<p>今回のコードラボで使用するブランチは下記です。</p>
+<ul>
+<li><strong>droidkaigi-2020-codelab</strong> - デフォルトブランチ、このブランチから module 分割をおこないます</li>
+<li><strong>droidkaigi-2020-codelab-modularized</strong> - module分割済みのブランチです</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="サンプルアプリを実行する" duration="5">
+        <p>まずはそのままの状態でサンプルアプリがどういう構造になっているかをみてみましょう。次の手順に従ってAndroid Studioでサンプルアプリを開きます。</p>
+<ol type="1" start="1">
+<li><code>architecture-components-samples-droidkaigi-2020-codelab.zip</code> ファイルをダウンロードしている場合は、ファイルを展開します</li>
+<li>Android Studioで <code>GithubBrowserSample</code> プロジェクトを開きます</li>
+<li><img style="width: 32.00px" src="img\bced50269ca10e7a.png">[実行]ボタンをクリックし、エミュレータを選択するか、Androidデバイスを接続すると、下記の画面が表示されるはずです</li>
+</ol>
+<p class="image-container"><img style="width: 297.59px" src="img\32f115e93b95a873.png"></p>
+<p>GitHubのログイン画面が表示された場合、ログインをお願いします。</p>
+<p>（ログインしないと、<a href="https://developer.github.com/v3/#rate-limiting" target="_blank">GitHub APIのRate Limit</a>にすぐ引っかかってしまうためです）</p>
+<p>下記のようなgithub.comを開くアプリを選択する画面が表示された場合、Chromeを選択してGitHubにログインしてください。</p>
+<p class="image-container"><img style="width: 315.35px" src="img\8b3cc4894988e149.png"></p>
+<p>このサンプルアプリは、GitHubのリポジトリを検索することができます。</p>
+<p>試しに、「droidkaigi」で検索してみましょう。</p>
+<p class="image-container"><img style="width: 338.00px" src="img\ccfb81a464f81624.png"></p>
+<p>無事にリポジトリの検索結果が表示されるはずです。</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="初めてのmodule分割" duration="10">
+        <p>それでは、まずapiを別moduleに分割してみましょう。</p>
+<p>ディレクトリ構造は<a href="https://github.com/DroidKaigi/conference-app-2020" target="_blank">DroidKaigi/conference-app-2020</a>を参考に、dataディレクトリにapiやrepositoryといったmoduleを配置していきます。</p>
+<h2 is-upgraded>dataディレクトリの作成</h2>
+<p>まず、dataディレクトリを作成します。</p>
+<p>作業がしやすいようにProjectのViewをProject Filesに切り替えておきます。</p>
+<p class="image-container"><img style="width: 209.00px" src="img\7a6e543de50898c9.png"></p>
+<p class="image-container"><img style="width: 602.00px" src="img\96552dd250df66b4.png"></p>
+<p class="image-container"><img style="width: 391.00px" src="img\2f5eac8ecc3a4adc.png"></p>
+<h2 is-upgraded>apiモジュールの作成</h2>
+<p>package nameは<code>com.android.example.data.api</code>で作成します。</p>
+<p class="image-container"><img style="width: 504.00px" src="img\58a60e2fb271184c.png"></p>
+<p class="image-container"><img style="width: 602.70px" src="img\a3662ee339369d91.png"></p>
+<p class="image-container"><img style="width: 602.00px" src="img\2ebfb685bad6702.png"></p>
+<p class="image-container"><img style="width: 602.00px" src="img\d427865b29ab1fde.png"></p>
+<h2 is-upgraded>apiモジュールをdataディレクトリに移動</h2>
+<p class="image-container"><img style="width: 188.00px" src="img\7712537be989199c.png"></p>
+<p class="image-container"><img style="width: 602.00px" src="img\c72c157230df5a2d.png"></p>
+<p>settings.gradleにも反映しておきましょう。その後、ビルドが通るか確認しておきましょう。</p>
+<h3 is-upgraded>settings.gradle</h3>
+<pre><code>include &#39;:app&#39;,
+        &#39;:data:api&#39;</code></pre>
+<h2 is-upgraded>AccessTokenParamaterをdata/api moduleに移動を試みる</h2>
+<p>AccessTokenParameterをドラッグ・アンド・ドロップで、data/api/src/main/java/com.android.example.data.apiに移動してみます。</p>
+<p class="image-container"><img style="width: 602.00px" src="img\14939aa3fdf17b3b.png"></p>
+<p>下記の画面が表示されるので、Refactorを押します。</p>
+<p class="image-container"><img style="width: 602.00px" src="img\c82ab498fd151918.png"></p>
+<p>しかし、下記の問題が検出され、本当に移動するのか確認されます。</p>
+<p>ここでは内容を見てからCancelを押しましょう。</p>
+<p class="image-container"><img style="width: 568.00px" src="img\35f5cecbf795f262.png"></p>
+<h2 is-upgraded>問題の原因と解決</h2>
+<p>何が問題なのでしょうか？</p>
+<p>com.google.gson.annotations.SerializedNameを参照しているが、これをdata/api moduleは知らないのが問題です。</p>
+<p class="image-container"><img style="width: 559.00px" src="img\1a0c43c96573f292.png"></p>
+<p>data/apiのbuild.gradleを開き、依存を追加していきます。</p>
+<p>ここでは、app moduleのcom.android.example.github.apiパッケージ配下のクラスが依存しているライブラリを追加しましょう。</p>
+<p>app/build.gradleを参考にdata/api/build.gradleファイル全体を下記の様に書き換えます。</p>
+<h3 is-upgraded>data/api/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.kotlin.stdlib
+    api deps.retrofit.runtime
+    implementation deps.retrofit.gson
+    implementation deps.timber
+
+    implementation deps.dagger.runtime
+    kapt deps.dagger.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>app/build.gradleに、data/api moduleへの依存を追加します。</p>
+<p><code>add</code>というコメントがある行が、追加した行です。Gradle Syncをお忘れ無く！</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:data:api&#34;) // add
+
+    implementation deps.app_compat
+    implementation deps.recyclerview</code></pre>
+<p>念のため、ビルドが通ることを確認しておきましょう。</p>
+<aside class="special"><p>サンプルアプリでは各ライブラリのバージョンをversions.graldeに羅列し、これをbuild.gradleから使うようになっています。</p>
+<p>このように、どこかにライブラリとそのバージョンをまとめて定義しておくと、複数のmoduleで同じライブラリを使用するときに参照するバージョンをひとまとめに管理でいるので便利です。</p>
+<p>gradleファイルに記述する以外にも、<a href="https://github.com/DroidKaigi/conference-app-2020/tree/master/buildSrc/src/main/java/dependencies" target="_blank">DroidKaigi conference-appのようにKotlinで記述する方法</a>もあります。</p>
+</aside>
+<h2 is-upgraded>AccessTokenParameterのdata/apiへの移動を再チャレンジ</h2>
+<p>試して見て下さい！今度は無事に成功します。</p>
+<p>同様にApiResponseとAccessTokenResponse、GithuthAuthServiceも移動しておきましょう。</p>
+<p>移動後は、ビルドが通ることを確認しておきましょう。module分割作業中は、こまめにビルドが通るか確認することをお勧めします。</p>
+<aside class="special"><p>過去のAndroidStudioでは複数クラス・ファイルを選択して同時に移動が出来たのですが、3.5.3ではできません。</p>
+<p>なので、1ファイルずつ移動しましょう。いずれ、この制限が撤廃されると良いですね。</p>
+</aside>
+<h2 is-upgraded>残りのクラスはどうするのか？</h2>
+<p>勘の良い方はお気づきかもしれませんが、残りのapiパッケージ配下のクラスはこのままではdata/api moduleに移動できません。</p>
+<p>app module 内の別のクラスに依存しているからです。</p>
+<p>それでは、次のセクションで残りのクラスをmodule分割できるようにしていきましょう。</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="model moduleの導入" duration="15">
+        <p>GithubServiceとRepoSearchResponseはcom.android.example.github.vo配下のクラスに依存しています。</p>
+<p>ここでは各module間でデータの受け渡しに使用する共通クラスの置き場所としてmodel moduleを導入。GithubServiceとRepoSearchResponseのapp moduleへの依存を切り離し、data/api moduleへの移動を可能とします。</p>
+<h2 is-upgraded>model moduleの追加</h2>
+<p>初めてのmodule分割の手順を参考に、projectのrootにmodel moduleを追加します。</p>
+<p>package nameは<code>com.android.example.model</code>で作成します。</p>
+<p class="image-container"><img style="width: 707.14px" src="img\165a96a2462cefc9.png"></p>
+<h2 is-upgraded>build.gradleの編集</h2>
+<p>com.android.example.github.vo配下のクラスが依存しているライブラリを、mode/build.gradleに記述します。</p>
+<p>model/build.gradleファイル全体を下記の様に書き換えて下さい。</p>
+<h3 is-upgraded>model/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.kotlin.stdlib
+
+    implementation deps.retrofit.gson
+    implementation deps.room.runtime
+
+    kapt deps.room.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>app moduleとapi moduleからmodel moduleへの依存を記述します。</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;) // add
+    implementation project(&#34;:data:api&#34;)</code></pre>
+<h3 is-upgraded>api/build.gradle</h3>
+<pre><code>dependencies {
+    api project(&#34;:model&#34;) // add
+
+    implementation deps.lifecycle.livedata_ktx</code></pre>
+<aside class="special"><p>なぜ、api/build.gradleではmodelへの依存をapiで記述しているのか？</p>
+<p>api moduleとして公開するのはGithubServiceとなりますが、このGithubServiceのメソッドの戻りには、model moduleに含まれているクラスを返すことになるからです。</p>
+</aside>
+<h3 is-upgraded>model moduleへのクラス移動</h3>
+<p>RepoSearchResult以外のクラスは、model moduleに移動可能です。1クラスずつ移動しましょう。</p>
+<p>RepoSearchResultはapp module内のGithubTypeConvertersに依存しているため、model moduleに移動はできません。</p>
+<p>各クラスの依存関係に注意しながら順番にクラスを移動しましょう。</p>
+<aside class="special"><p>roomのentityをmodel moduleに置くべきなのかどうか？</p>
+<p>理想を言えば、Noだと思います。modelのクラスは各モジュールから自由に使える、かつその依存先はmodel moduleに閉じているのが好ましいと思います。</p>
+</aside>
+<h3 is-upgraded>data/api moduleのクラス移動続き</h3>
+<p>これで、app moduleに残っているapi関連クラスを、AuthenticationInterceptor以外はapi moduleへ移動が可能になりました。</p>
+<p>試しにGithubServiceのimport文をみてみましょう。</p>
+<pre><code>import androidx.lifecycle.LiveData
+import com.android.example.data.api.ApiResponse
+import com.android.example.model.Contributor
+import com.android.example.model.Repo
+import com.android.example.model.User
+import retrofit2.Call
+import retrofit2.http.GET
+import retrofit2.http.Path
+import retrofit2.http.Query</code></pre>
+<p>LiveDataやretrofit2など公開されているライブラリ以外には、library moduleのimport文しか存在しません。</p>
+<p>それでは、RepoSearchResponseとGithubServiceをdata/api moduleに移動しましょう。</p>
+<h2 is-upgraded>Data binding compilerのエラー解消</h2>
+<p>この状態でビルドすると、Data binding compilerで下記のエラーが発生します。</p>
+<p class="image-container"><img style="width: 602.00px" src="img\4614bdafd90daa4.png"></p>
+<p>Android Studioのリファクタリング機能のバグなのか、</p>
+<p>layoutファイル内のvariableのtypeが適切に書き換えられていません。</p>
+<p>エラーが出ているレイアウトファイルを修正しましょう。</p>
+<h3 is-upgraded>search_fragment.xmlの修正</h3>
+<pre><code>      &lt;variable
+            name=&#34;searchResult&#34;
+            type=&#34;com.android.example.model.Resource&#34; /&gt;</code></pre>
+<p>を</p>
+<pre><code>       &lt;variable
+            name=&#34;searchResult&#34;
+            type=&#34;LiveData&amp;lt;Resource&amp;lt;List&amp;lt;Repo&gt;&gt;&gt;&#34; /&gt;</code></pre>
+<p>に変更します。</p>
+<h3 is-upgraded>repo_fragment.xmlの修正</h3>
+<pre><code>      &lt;variable
+            name=&#34;repo&#34;
+            type=&#34;com.android.example.model.Resource&#34; /&gt;</code></pre>
+<p>を</p>
+<pre><code>       &lt;variable
+            name=&#34;repo&#34;
+            type=&#34;LiveData&amp;lt;Resource&amp;lt;List&amp;lt;Repo&gt;&gt;&gt;&#34; /&gt;</code></pre>
+<p>に変更します。</p>
+<h3 is-upgraded>user_fragment.xmlの修正</h3>
+<pre><code>      &lt;variable
+            name=&#34;user&#34;
+            type=&#34;com.android.example.model.Resource&#34; /&gt;</code></pre>
+<p>を</p>
+<pre><code>       &lt;variable
+            name=&#34;repo&#34;
+            type=&#34;LiveData&amp;lt;Resource&amp;lt;User&gt;&gt;&#34; /&gt;</code></pre>
+<p>に変更します。</p>
+<p>これで、api関連クラスでdata/api moduleに移動できていないのはAuthenticationInterceptorだけになりました。</p>
+<p class="image-container"><img style="width: 274.00px" src="img\11e06c601c108ac8.png"></p>
+<p>AuthenticationInterceptorはAccessTokenRepositoryに依存しているので、今度はreposiotry moduleを作りましょう。</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="repository moduleの導入" duration="15">
+        <p>初めてのmodule分割の手順を参考に、repository moduleを作ります。</p>
+<p>package nameは<code>com.android.example.data.repository</code>で作成します。</p>
+<p class="image-container"><img style="width: 704.65px" src="img\725be44cc73e6572.png"></p>
+<p>repisotry moduleはdataディレクトリに移動し、settings.gradle内の名称も変更しておきましょう。</p>
+<h3 is-upgraded>settings.gradle</h3>
+<pre><code>include &#39;:app&#39;, 
+        &#39;:model&#39;, 
+        &#39;:data:repository&#39;,
+        &#39;:data:api&#39;</code></pre>
+<h2 is-upgraded>data/repository moduleへAccessTokenRepositoryを移動</h2>
+<p>全てのreposiotry関連クラスを一度にdata/repository moduleへ移動するのは大変なので、まずは依存しているものが少ないAccessTokenRepositoryだけをdata/repository moduleへ移動します。</p>
+<p>まず、data/repository/build.gradleを変更します。そして、app moduleからdata/repository moduleを参照します。</p>
+<p>data/repository/build.gradleファイル全体を下記の様に書き換えて下さい。</p>
+<h3 is-upgraded>data/repository/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+   compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = &#34;1.8&#34;
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    api project(&#34;:model&#34;)
+
+    implementation deps.core_ktx
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.kotlin.stdlib
+
+    implementation deps.dagger.runtime
+    kapt deps.dagger.compiler
+
+    implementation deps.kotpref.core
+    implementation deps.kotpref.initializer
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>app moduleからdata/repository moduleへの依存を記述します。</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:repository&#34;) // add
+
+    implementation deps.app_compat
+    implementation deps.recyclerview</code></pre>
+<p>これで、AccessTokenRepositoryをdata/repository moduleへ移動できます。</p>
+<h2 is-upgraded>AuthenticationInterceptorをどのmoduleに配置するか</h2>
+<p>では、AuthenticationInterceptorをdata/api moduleに移動し、api moduleからdata/repository moduleに依存させれば良いでしょうか。いえ、そう簡単にはいきません。</p>
+<p>repository moduleからapi moduleを参照し、repositoryでapiアクセスを隠蔽したいところですが、module間の依存で循環参照はおこなえません。</p>
+<p>この場合、いくつかの対策が考えられますが、今回はGithubServiceとGithubAuthServiceをbuildするapi-builder moduleを追加し、ここにAuthenticationInterceptorを移動します。</p>
+<p>そうすると、各moduleの依存関係が循環するのを防ぐことができます。</p>
+<p>実際にやってみましょう。</p>
+<h2 is-upgraded>api-builder moduleを追加</h2>
+<p>初めてのmodule分割の手順を参考に、api-builder moduleを作ります。</p>
+<p>package nameは<code>com.android.example.data.api_builder</code>で作成します。</p>
+<p class="image-container"><img style="width: 697.88px" src="img\3a796e16a2180c1d.png"></p>
+<p>api-builder moduleはdataディレクトリに移動し、settings.gradle内の名称も変更しておきましょう。</p>
+<h3 is-upgraded>settings.gradle</h3>
+<pre><code>include &#39;:app&#39;, 
+        &#39;:model&#39;, 
+        &#39;:data:repository&#39;,
+        &#39;:data:api&#39;,
+        &#39;:data:api-builder&#39;</code></pre>
+<p>data/api-builder/build.gradleファイル全体を下記の様に書き換えて下さい。</p>
+<h3 is-upgraded>data/api-builder/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    api project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:repository&#34;)
+
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.kotlin.stdlib
+    implementation deps.retrofit.runtime
+    implementation deps.retrofit.gson
+    api deps.okhttp_logging_interceptor
+
+    implementation deps.dagger.runtime
+    kapt deps.dagger.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>app moduleからdata/api-builder moduleへの依存を書いておきます。</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;) // add
+    implementation project(&#34;:data:repository&#34;)
+
+    implementation deps.app_compat
+    implementation deps.recyclerview</code></pre>
+<p>AuthenticationInterceptorをdata/api-builder moduleに移動します。</p>
+<h2 is-upgraded>AppModuleの処理の一部を別クラスに切り出し</h2>
+<p>AppModule#provideGithubService と AppModule#provideGithubAuthService の処理を他のクラスに切り出し、これをdata/api-builder moduleに移動しましょう。ここでは、 ApiBuilderというクラスをapp moduleに作ります。</p>
+<h3 is-upgraded>ApiBuilder</h3>
+<pre><code>class ApiBuilder @Inject constructor(
+    private val authenticationInterceptor: AuthenticationInterceptor
+) {
+    fun buildGithubService(
+        baseUrl: String,
+        loggingLevel: HttpLoggingInterceptor.Level
+    ): GithubService {
+        val client = OkHttpClient.Builder()
+            .addNetworkInterceptor(HttpLoggingInterceptor().apply { level = loggingLevel })
+            .addInterceptor(authenticationInterceptor)
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .addCallAdapterFactory(LiveDataCallAdapterFactory())
+            .client(client)
+            .build()
+            .create(GithubService::class.java)
+    }
+
+    fun buildGithubAuthService(
+        baseUrl: String
+    ): GithubAuthService {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GithubAuthService::class.java)
+    }
+}</code></pre>
+<p>AppModule で ApiBuilder を使用するように書き換えます。</p>
+<p>AppModule</p>
+<pre><code>   @Singleton
+    @Provides
+    fun provideGithubService(
+        apiBuilder: ApiBuilder
+    ): GithubService {
+        return apiBuilder.buildGithubService(
+            baseUrl = &#34;https://api.github.com/&#34;,
+            loggingLevel = HttpLoggingInterceptor.Level.BODY
+        )
+    }
+
+    @Singleton
+    @Provides
+    fun provideGithubAuthService(
+        apiBuilder: ApiBuilder
+    ): GithubAuthService {
+        return apiBuilder.buildGithubAuthService(
+            baseUrl = &#34;https://github.com/&#34;
+        )
+    }</code></pre>
+<p>これで</p>
+<ul>
+<li>LiveDataCallAdapter</li>
+<li>LiveDataCallAdapterFactory</li>
+<li>ApiBuilder</li>
+</ul>
+<p>をapi-builder moduleへ移動できます。移動してください。</p>
+<p>次は、残りのrepository関連クラスをdata/repository moduleに移動するため、それらが依存しているdb関係のクラス用のmoduleとしてdata/db moduleを導入し、移動していきましょう。</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="db moduleの導入" duration="20">
+        <h2 is-upgraded>db moduleの追加</h2>
+<p>初めてのmodule分割の手順を参考に、db moduleを作ります。</p>
+<p>package nameは<code>com.android.example.data.db</code>で作成します。</p>
+<p class="image-container"><img style="width: 684.96px" src="img\b2c00c483bc4bb4.png"></p>
+<p>db moduleはdataディレクトリに移動し、settings.gradle内の名称も変更しておきましょう。</p>
+<h3 is-upgraded>settings.gradle</h3>
+<pre><code>include &#39;:app&#39;, 
+        &#39;:model&#39;,
+        &#39;:data:db&#39;,
+        &#39;:data:repository&#39;,
+        &#39;:data:api&#39;,
+        &#39;:data:api-builder&#39;</code></pre>
+<p>次に、db関係クラスと各repositoryクラスが依存しているOpenForTestingアノテーションを、各moduleから参照できるようにします。</p>
+<p>OpenForTesting用のmoduleを作成、各々のmoduleからの依存関係を記述します。</p>
+<p>ただし、OpenForTestingはreleaseとdebugで実装が異なるので、moduleも二つ作成します。</p>
+<h2 is-upgraded>testing-release moduleとtesting-debug moduleの追加</h2>
+<p>初めてのmodule分割の手順を参考に、testing-release moduleとtesting-debug moduleを作ります。</p>
+<p>どちらもpackage nameは<code>com.android.example.testing</code>で作成します。</p>
+<p class="image-container"><img style="width: 704.68px" src="img\f4f36032f91c98b3.png"></p>
+<p class="image-container"><img style="width: 680.39px" src="img\8f23fa0751192937.png"></p>
+<p>それぞれのbuild.gradleファイル全体を下記の様に書き換えて下さい。</p>
+<h3 is-upgraded>testing-release/build.gradle と testing-debug/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.kotlin.stdlib
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>各moduleのbuild.gradleにtesting-release moduleとtesting-debug moduleへの依存を追加します。</p>
+<p>app moduleからdata/db moduleへの依存も追加します。</p>
+<p>また、data/repository moduleからdata/api moduleへの依存を記入します。</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;) // add
+    releaseImplementation project(&#34;:testing-release&#34;) // add
+    debugImplementation project(&#34;:testing-debug&#34;) // add</code></pre>
+<h3 is-upgraded>data/db/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = &#34;1.8&#34;
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    api project(&#34;:model&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+
+    implementation deps.lifecycle.livedata_ktx
+    api deps.room.runtime
+    implementation deps.kotlin.stdlib
+    implementation deps.timber
+
+    kapt deps.room.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<h3 is-upgraded>data/reposiotry/build.gradle</h3>
+<pre><code>dependencies {
+    api project(&#34;:model&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;) // add
+    debugImplementation project(&#34;:testing-debug&#34;) // add
+    implementation project(&#34;:data:api&#34;) // add
+
+    implementation deps.core_ktx    
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.kotlin.stdlib</code></pre>
+<p>次にBuild Variantsをreleaseにして、app/src/release に格納されているOpenForTesting.ktをtesting-release moduleへ移動します。</p>
+<p>Android Studioのリファクタリング機能は、現在有効なBuild Variantsでしか機能しないため、注意して下さい。</p>
+<p class="image-container"><img style="width: 602.00px" src="img\cd5f96e92e6187fd.png"></p>
+<p>次に、Build Variantsをdebugに戻して、app/src/debug に格納されているOpenForTesting.ktをtesting-debug moduleへ移動します。</p>
+<p class="image-container"><img style="width: 602.00px" src="img\d5a958b2c740840.png"></p>
+<p>念のため、releaseとdebugの両方のBuild Variantsでビルドが成功するか確認しておきましょう。</p>
+<h2 is-upgraded>db関係のクラスをdata/db moduleに移動</h2>
+<p>RepoSearchResultと、com.android.example.github.db配下のクラスを、全てdb moduleに移動します。</p>
+<p>さて、他にrepositoryクラス達が依存しているクラスには何があるでしょうか？</p>
+<p>あとはAppExecutorsを別moduleに切り出せば、repositoryクラス達をdata/repository moduleに移動できそうです。</p>
+<h2 is-upgraded>executor moduleの追加</h2>
+<p>AppExecutorsはexecutor moduleを作り、そちらに移動しましょう。</p>
+<p>初めてのmodule分割の手順を参考に、executor moduleを作ります。</p>
+<p>package nameは<code>com.android.example.executor</code>で作成します。</p>
+<p class="image-container"><img style="width: 602.00px" src="img\efde3db98efbb5b2.png"></p>
+<p>repository moduleとapp moduleをexecutor moduleに依存させます。</p>
+<h3 is-upgraded>data/repository/build.gradle</h3>
+<pre><code>dependencies {
+    api project(&#34;:model&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:executor&#34;) // add
+
+    implementation deps.core_ktx
+    implementation deps.lifecycle.livedata_ktx</code></pre>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:executor&#34;) // add
+
+    implementation deps.app_compat</code></pre>
+<p>executor moduleにAppExecutorsを移動する前準備として、executor/build.gradleファイル全体を下記の様に書き換えて下さい。</p>
+<h3 is-upgraded>executor/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.kotlin.stdlib
+
+    implementation deps.dagger.runtime
+    kapt deps.dagger.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>AppExecutorsをexecutor moduleに移動します。</p>
+<h2 is-upgraded>repository関連クラスをdata/repository moduleに移動</h2>
+<p>各repositoryクラスが依存しているAbsentLiveDataとRateLimiterを先にdata/repository moduleに移動してください。</p>
+<p>そして、data/repository moduleをdata/db moduleへ依存させます。</p>
+<h3 is-upgraded>data/repository/build.gradle</h3>
+<pre><code>dependencies {
+    api project(&#34;:model&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:db&#34;) // add
+    implementation project(&#34;:executor&#34;)
+
+    implementation deps.core_ktx
+    implementation deps.lifecycle.livedata_ktx</code></pre>
+<p>その後にcom.android.example.github.repository配下のクラスを全てrepository moduleに移動します。</p>
+<p>これで、app moduleからそれぞれ下記のlibrary moduleに分割することができました。</p>
+<ul>
+<li>executor</li>
+<li>testing-release</li>
+<li>testing-debug</li>
+<li>model</li>
+<li>data/db</li>
+<li>data/repository</li>
+<li>data/api</li>
+<li>data/api-builder</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="login moduleの導入" duration="20">
+        <p>これまでのmodule分割では画面を含まないクラスばかりを対象としていました。</p>
+<p>今回はログイン画面をmodule分割してみましょう。</p>
+<h2 is-upgraded>featureディレクトリの作成</h2>
+<p>dataディレクトリと同じように、featureディレクトリを作成しましょう。</p>
+<p class="image-container"><img style="width: 404.00px" src="img\9e2c4744fab17f37.png"></p>
+<h2 is-upgraded>login moduleの追加</h2>
+<p>package nameは<code>com.android.example.feature.login</code>で作成します。</p>
+<p class="image-container"><img style="width: 602.00px" src="img\9b23657141ee70ee.png"></p>
+<p>login moduleはfeatureディレクトリに移動し、settings.gradle内の名称も変更しておきましょう。</p>
+<h3 is-upgraded>settings.gradle</h3>
+<pre><code>include &#39;:app&#39;, 
+        &#39;:feature:login&#39;,
+        &#39;:executor&#39;,
+        &#39;:testing-release&#39;,
+        &#39;:testing-debug&#39;,
+        &#39;:model&#39;,
+        &#39;:data:db&#39;,
+        &#39;:data:repository&#39;,
+        &#39;:data:api&#39;,
+        &#39;:data:api-builder&#39;</code></pre>
+<p>feature/login moduleにはLoginActivityとLoginHelperを移動します。</p>
+<p>あらかじめ、これを考慮してfeature/login moduleのbuild.gradleファイル全体を下記の様に書き換えます。</p>
+<h3 is-upgraded>feature/login/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:repository&#34;)
+
+    implementation deps.app_compat
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.lifecycle.runtime_ktx
+    implementation deps.browser
+    implementation deps.kotlin.stdlib
+    implementation deps.coroutines.android
+    implementation deps.timber
+
+    implementation deps.dagger.runtime
+    kapt deps.dagger.compiler
+    kapt deps.lifecycle.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>app moduleからfeature/login moduleへの依存性を記述しておきます。</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:executor&#34;)
+
+    implementation project(&#34;:feature:login&#34;) // add
+
+    implementation deps.app_compat
+    implementation deps.recyclerview</code></pre>
+<h2 is-upgraded>app moduleのBuildConfigをlibrary moduleから参照できない</h2>
+<p>LoginHelperでは下記のBuildConfigを参照しています。</p>
+<ul>
+<li>GITHUB_CLIENT_ID</li>
+<li>GITHUB_CLIENT_SECRET</li>
+</ul>
+<p>しかし、これはあくまでapp module側で定義しているBuildConfigなので、LoginHelperをfeature/login moduleに移動すると参照できません。</p>
+<p>今回はBuildConfigをラップして提供するためのEnvVarというinterfaceを定義し、これをenvvar moduleに配置。EnvVarの実装自体はapp moduleでおこなう、という方法で対処します。</p>
+<h2 is-upgraded>envvar moduleの追加</h2>
+<p>package nameは<code>com.android.example.envvar</code>で作成します。</p>
+<p class="image-container"><img style="width: 602.00px" src="img\37b4d24e597c8d70.png"></p>
+<p>envvar/build.gradleファイル全体を下記の様に書き換えます。</p>
+<h3 is-upgraded>envvar/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.kotlin.stdlib
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>feature/login moduleとapp moduleをenvvar moduleに依存させます。</p>
+<h3 is-upgraded>feature/login/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:envvar&#34;) // add
+
+    implementation deps.app_compat
+    implementation deps.lifecycle.livedata_ktx</code></pre>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:executor&#34;)
+    implementation project(&#34;:envvar&#34;) // add
+
+    implementation project(&#34;:feature:login&#34;)
+
+    implementation deps.app_compat</code></pre>
+<p>次に、envvar moduleにEnvVar interfaceを追加します。</p>
+<h3 is-upgraded>EnvVar</h3>
+<pre><code>package com.android.example.envvar
+
+interface EnvVar {
+    val GITHUB_CLIENT_ID: String
+    val GITHUB_CLIENT_SECRET: String
+}</code></pre>
+<p>AppModuleでEnvVarを実装し、提供します。</p>
+<h3 is-upgraded>AppModule</h3>
+<pre><code>    @Singleton
+    @Provides
+    fun provieEnvVar(): EnvVar {
+        return object : EnvVar {
+            override val GITHUB_CLIENT_ID = BuildConfig.GITHUB_CLIENT_ID
+            override val GITHUB_CLIENT_SECRET = BuildConfig.GITHUB_CLIENT_SECRET
+        }
+    }</code></pre>
+<p>LoginHelperはBuildConfigを直接参照するのを辞め、代わりにEnvVarを使うように変更します。</p>
+<p>ここでのBuildConfigはcom.android.example.github.BuildConfigを参照できるようにimportしておきましょう。</p>
+<h3 is-upgraded>LoginHelper</h3>
+<pre><code>class LoginHelper @Inject constructor(
+    private val githubAuthService: GithubAuthService,
+    private val accessTokenRepository: AccessTokenRepository,
+    private val envVar: EnvVar
+) {
+    fun generateAuthorizationUrl(): Uri =
+        Uri.Builder().apply {
+            scheme(&#34;https&#34;)
+            authority(&#34;github.com&#34;)
+            appendPath(&#34;login&#34;)
+            appendPath(&#34;oauth&#34;)
+            appendPath(&#34;authorize&#34;)
+            appendQueryParameter(&#34;client_id&#34;, envVar.GITHUB_CLIENT_ID)
+        }.build()
+
+    suspend fun handleAuthRedirect(intent: Intent): Boolean {
+        val uri = intent.data ?: return false
+        if (!uri.toString().startsWith(&#34;dgbs://login&#34;)) return false
+        val tempCode = uri.getQueryParameter(&#34;code&#34;) ?: return false
+
+        Timber.i(&#34;code: $tempCode&#34;)
+
+        val param = AccessTokenParameter(
+            clientId = envVar.GITHUB_CLIENT_ID,
+            clientSecret = envVar.GITHUB_CLIENT_SECRET,
+            code = tempCode
+        )
+
+        return runCatching {
+            val resp = githubAuthService.createAccessToken(param)
+            accessTokenRepository.save(AccessToken(resp.accessToken))
+        }.onFailure {
+            Timber.e(it, &#34;createAccessToken failed!&#34;)
+        }.isSuccess
+    }
+}</code></pre>
+<p>これで、LoginHelperはfeature/login moduleへ移動可能です。移動しましょう。</p>
+<p>さて、LoginActivityはInjectableというinterfaceに依存しており、このままではLoginActivityをapp moduleの外に移動することはできません。</p>
+<p>新たにdi moduleを作成し、これにはInjectableを移動しましょう。</p>
+<h2 is-upgraded>di moduleの追加</h2>
+<p>package nameは<code>com.android.example.di</code>で作成します。</p>
+<p class="image-container"><img style="width: 602.00px" src="img\dd6a9fbb8e67cb73.png"></p>
+<p>di/build.gradleファイル全体を下記の様に書き換えて下さい。</p>
+<h3 is-upgraded>di/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.kotlin.stdlib
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>app moduleとfeature/login moduleにdi moduleへの依存性を記述します。</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:executor&#34;)
+    implementation project(&#34;:envvar&#34;)
+    implementation project(&#34;:di&#34;) // add
+
+    implementation project(&#34;:feature:login&#34;)
+
+    implementation deps.app_compat</code></pre>
+<h3 is-upgraded>feature/login/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:envvar&#34;)
+    implementation project(&#34;:di&#34;) // add
+
+    implementation deps.app_compat</code></pre>
+<p>次にInjectableをdi moduleに移動します。</p>
+<p>これで、ようやくLoginActivityをfeaure/login moduleへ移動可能となりました。</p>
+<p>activity_login.xml、LoginActvityの順にfeaure/login moduleへ移動しましょう。</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="後始末" duration="5">
+        <h2 is-upgraded>module追加時の/build.gradle変更を戻す</h2>
+<p>Android Studio で module を追加すると、プロジェクトルートの build.gradle に不要なkotlin-gradle-plugin への依存が追加されます。削除しておきましょう。</p>
+<p>最終的な build.gradle は下記になります。</p>
+<h3 is-upgraded>build.gradle</h3>
+<pre><code>buildscript {
+    apply from: &#39;versions.gradle&#39;
+    addRepos(repositories)
+    dependencies {
+        classpath deps.android_gradle_plugin
+        classpath deps.kotlin.plugin
+        classpath deps.kotlin.allopen
+        classpath deps.navigation.safe_args_plugin
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+allprojects {
+    addRepos(repositories)
+}
+
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}</code></pre>
+<h2 is-upgraded>app/build.gradle の不要な依存性を削除</h2>
+<p>app/build.gradleの不要な依存性も削除しましょう。いくつかの依存は各library moduleのbuild.gradleに記述があれば問題ありません。</p>
+<p>最終的な app/build.gradle の dependencies は下記になります。</p>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:executor&#34;)
+    implementation project(&#34;:envvar&#34;)
+    implementation project(&#34;:di&#34;)
+
+    implementation project(&#34;:feature:login&#34;)
+
+    implementation deps.app_compat
+    implementation deps.recyclerview
+    implementation deps.cardview
+    implementation deps.material
+    implementation deps.core_ktx
+    implementation deps.transition
+    implementation deps.navigation.fragment_ktx
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.lifecycle.runtime_ktx
+    implementation deps.lifecycle.java8
+    implementation deps.glide.runtime
+
+    implementation deps.dagger.runtime
+    implementation deps.dagger.android
+    implementation deps.dagger.android_support
+    implementation deps.constraint_layout
+    implementation deps.kotlin.stdlib
+    implementation deps.coroutines.android
+
+    implementation deps.timber
+
+    kapt deps.dagger.android_support_compiler
+    kapt deps.dagger.compiler
+    kapt deps.lifecycle.compiler
+
+    testImplementation deps.junit
+    testImplementation deps.mock_web_server
+    testImplementation deps.arch_core.testing
+    testImplementation deps.mockito.core
+
+    androidTestImplementation deps.atsl.core
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.atsl.runner
+    androidTestImplementation deps.atsl.rules
+
+    androidTestImplementation deps.app_compat
+    androidTestImplementation deps.recyclerview
+    androidTestImplementation deps.cardview
+    androidTestImplementation deps.material
+
+    androidTestImplementation deps.espresso.core
+    androidTestImplementation deps.espresso.contrib
+
+    androidTestImplementation deps.arch_core.testing
+    androidTestImplementation deps.mockito.core
+    androidTestImplementation deps.mockito.android
+}</code></pre>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="まとめ" duration="0">
+        <p>いかがでしたでしょうか？</p>
+<p>今回は開発開始してからほぼ3年が経過しているアプリを用い、実践的なmodule分割をおこないました。</p>
+<p>codelabsという特性上、細かくmodule分割をおこなっています。</p>
+<p>実際はexecutorやenvvar、diといった小さな単位でmoduleをつくるのではなく、例えばcore moduleを作り、そちらに集約する、という手もあります。</p>
+<p>ただし、あまりに汎用的なmodule名（例：common）にしてしまうと、色々なクラスが存在する神moduleになってしまう危険性もあります。名前に気をつけたり、moduleが大きくなってきたら分割するなどをお勧めします。</p>
+<p>また、今回はcodelabsのボリューム上、multi moduleにおいてDagger周りをどうするか？という部分には触れていません。</p>
+<p>ぜひ、DroidKaigi Conference appなどを参考に、ご自身でDagger周りの改善をおこなってみてください。</p>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/codelab-elements/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/prettify.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/codelab-elements.js"></script>
+
+</body>
+</html>

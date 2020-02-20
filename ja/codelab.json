@@ -1,0 +1,23 @@
+{
+  "environment": "web",
+  "format": "html",
+  "prefix": "https://storage.googleapis.com",
+  "mainga": "UA-49880327-14",
+  "updated": "2020-02-20T02:07:08Z",
+  "id": "",
+  "duration": 100,
+  "title": "既存のアプリをマルチモジュール化する",
+  "authors": "DroidKaigi Committee",
+  "summary": "既存のAndroidアプリをmulti-module project化する方法",
+  "source": "1xPwPzLxTcEfr6yKmvRegJ4585vQnJv9KPQvdAoAa16c/edit#",
+  "theme": "androd",
+  "status": [
+    "draft"
+  ],
+  "category": [
+    "Androd"
+  ],
+  "tags": [],
+  "feedback": "https://github.com/DroidKaigi/codelab-2020/issues",
+  "url": ""
+}
