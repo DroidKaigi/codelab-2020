@@ -1,0 +1,1204 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>Multi-Modularizing Apps</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/codelab-elements/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14"></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  id=""
+                  title="Multi-Modularizing Apps"
+                  environment="web"
+                  feedback-link="https://github.com/DroidKaigi/codelab-2020/issues">
+    
+      <google-codelab-step label="Introduction" duration="5">
+        <p>In this codelab, you will learn how to split an existing app into multiple modules.</p>
+<p>Starting with a project containing a single app module,</p>
+<p class="image-container"><img style="width: 484.00px" src="img\eef75fbea75d277a.png"></p>
+<p>we will multi-modularize the project like so:</p>
+<p class="image-container"><img style="width: 602.00px" src="img\5f80cc1debe751fe.png"></p>
+<h2 is-upgraded>Pros of a Multi-Module Project</h2>
+<ul>
+<li>Expected build times will be shorter</li>
+<li>By splitting each module into proper layers, class dependencies will stay clean</li>
+<li>Multiple versions of the app (such as free / paid versions) can be built with modules instead of build variants</li>
+<li>Avoids overcomplexity with build variants</li>
+<li>Android Studio&#39;s refactoring feature only recognizes current build variants, but will recognize all app modules</li>
+<li>Reduces the responsibilities of each module</li>
+<li>e.g. A response class for a Web API can access a repository module, but another module that uses the repository cannot see the response class</li>
+</ul>
+<h2 class="checklist" is-upgraded>What You&#39;ll Learn</h2>
+<ul class="checklist">
+<li>How to add a new library module</li>
+<li>How to smoothly migrate a class from an existing module to a new one</li>
+<li>Switch library modules that depend on release/debug builds</li>
+<li>Indirectly refer to BuildConfig in the app module from library modules</li>
+</ul>
+<h2 is-upgraded>Prerequisites</h2>
+<ul>
+<li>A basic knowledge of the Kotlin syntax</li>
+<li>How to <a href="https://developer.android.com/studio/build/dependencies" target="_blank">add build dependencies</a> to build.gradle, and the difference between api and implementation</li>
+<li>A basic knowledge of Dagger</li>
+<li>For a basic knowledge of Dagger, refer to <a href="https://codelabs.developers.google.com/codelabs/android-dagger/index.html?index=..%2F..index#0" target="_blank">Using Dagger in your Android app</a>.</li>
+</ul>
+<h2 is-upgraded>What you&#39;ll need</h2>
+<ul>
+<li><a href="https://developer.android.com/studio/" target="_blank">Android Studio 3.5.3</a> (You can finish this codelab with other versions, but a few items may be missing and/or look different)</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Setting up" duration="5">
+        <h2 is-upgraded>Download the code</h2>
+<p>You can download the source code needed for this codelab from the link below:</p>
+<p><a href="https://github.com/DroidKaigi/architecture-components-samples/archive/droidkaigi-2020-codelab.zip" target="_blank">Download zip</a></p>
+<p>Alternatively, you can clone the GitHub repository by running the code below in the command line.</p>
+<pre>$ git clone https://github.com/DroidKaigi/architecture-components-samples.git</pre>
+<p>These are the branches we will use:</p>
+<ul>
+<li><strong>droidkaigi-2020-codelab</strong> - The default branch. We will split the app here.</li>
+<li><strong>droidkaigi-2020-codelab-modularized</strong> - This branch has the modularized app.</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Running the sample app" duration="5">
+        <p>First, let&#39;s get familiar with the sample app. Open the app with Android Studio:</p>
+<ol type="1" start="1">
+<li>If you&#39;ve downloaded the <code>architecture-components-samples-droidkaigi-2020-codelab.zip</code> file, extract its contents.</li>
+<li>Open the <code>GithubBrowserSample</code> project with Android Studio.</li>
+<li>Click the <img style="width: 32.00px" src="img\bced50269ca10e7a.png">[Run] button, and choose an emulator or a connected device. Your device should display something like this:</li>
+</ol>
+<p class="image-container"><img style="width: 297.59px" src="img\32f115e93b95a873.png"></p>
+<p>If your screen shows a GitHub login screen, please login. (If we don&#39;t, we&#39;ll hit the <a href="https://developer.github.com/v3/#rate-limiting" target="_blank">rate limit of GitHub API</a> pretty soon)</p>
+<p>If your device asks you to choose what app to open github.com with, choose Chrome and login to GitHub.</p>
+<p class="image-container"><img style="width: 315.35px" src="img\8b3cc4894988e149.png"></p>
+<p>In this sample app, you can search for GitHub repositories.</p>
+<p>Let&#39;s try searching &#34;droidkaigi&#34;.</p>
+<p class="image-container"><img style="width: 338.00px" src="img\ccfb81a464f81624.png"></p>
+<p>You should see the search results appear on your screen.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Your first split" duration="10">
+        <p>Let&#39;s give the api a new home.</p>
+<p>Using the <a href="https://github.com/DroidKaigi/conference-app-2020" target="_blank">DroidKaigi/conference-app-2020</a> as a reference for directory structure, we will be adding modules such as &#34;api&#34; and &#34;repository&#34; to a data directory.</p>
+<h2 is-upgraded>Making a data directory</h2>
+<p>Let&#39;s start by making a data directory.</p>
+<p>To make life easier, switch the Project view to Project Files.</p>
+<p class="image-container"><img style="width: 209.00px" src="img\7a6e543de50898c9.png"></p>
+<p class="image-container"><img style="width: 602.00px" src="img\96552dd250df66b4.png"></p>
+<p class="image-container"><img style="width: 391.00px" src="img\2f5eac8ecc3a4adc.png"></p>
+<h2 is-upgraded>Create the api module</h2>
+<p>Create the api module and set its package name to <code>com.android.example.data.api</code>.</p>
+<p class="image-container"><img style="width: 504.00px" src="img\58a60e2fb271184c.png"></p>
+<p class="image-container"><img style="width: 602.70px" src="img\a3662ee339369d91.png"></p>
+<p class="image-container"><img style="width: 602.00px" src="img\2ebfb685bad6702.png"></p>
+<p class="image-container"><img style="width: 602.00px" src="img\d427865b29ab1fde.png"></p>
+<h2 is-upgraded>Move the api module to the data directory</h2>
+<p class="image-container"><img style="width: 188.00px" src="img\7712537be989199c.png"></p>
+<p class="image-container"><img style="width: 602.00px" src="img\c72c157230df5a2d.png"></p>
+<p>We need to declare this in the <code>settings.gradle</code> as well. This change should build without errors.</p>
+<h3 is-upgraded>settings.gradle</h3>
+<pre><code>include &#39;:app&#39;,
+        &#39;:data:api&#39;</code></pre>
+<h2 is-upgraded>Moving the AccessTokenParamater to the data/api module</h2>
+<p>Move AccessTokenParameter by drag &amp; dropping it to data/api/src/main/java/com.android.example.data.api.</p>
+<p class="image-container"><img style="width: 602.00px" src="img\14939aa3fdf17b3b.png"></p>
+<p>A dialog will appear; press Refactor.</p>
+<p class="image-container"><img style="width: 602.00px" src="img\c82ab498fd151918.png"></p>
+<p>The following problems will be detected, and Android Studio will confirm if you really want to continue.</p>
+<p>For now, let&#39;s check the problems and press cancel.</p>
+<p class="image-container"><img style="width: 568.00px" src="img\35f5cecbf795f262.png"></p>
+<h2 is-upgraded>Root cause and solving them</h2>
+<p>So what caused the errors?</p>
+<p>The root cause was that the data/api module doesn&#39;t know about com.google.gson.annotations.SerializedName which is being referenced.</p>
+<p class="image-container"><img style="width: 559.00px" src="img\1a0c43c96573f292.png"></p>
+<p>To solve this, open the build.gradle in data/api and add dependencies.</p>
+<p>Here, add the libraries the classes in the package com.android.example.github.api in the app module are dependant upon.</p>
+<p>Referring the app/build.gradle file, rewrite the data/api/build.gradle like so:</p>
+<h3 is-upgraded>data/api/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.kotlin.stdlib
+    api deps.retrofit.runtime
+    implementation deps.retrofit.gson
+    implementation deps.timber
+
+    implementation deps.dagger.runtime
+    kapt deps.dagger.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>Then, add a data/api module dependency to app/build.gradle.</p>
+<p>The line with the <code>add</code> comment is the line added. Don&#39;t forget to press Gradle Sync!</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:data:api&#34;) // add
+
+    implementation deps.app_compat
+    implementation deps.recyclerview</code></pre>
+<p>Just to make sure, check if the build succeeds.</p>
+<aside class="special"><p>In the sample app, all library versions are listed in versions.gradle, and are referred from build.gradle.</p>
+<p>This way of declaring libraries and its versions on one place is effective, as it is easier to manage versions across multiple modules.</p>
+<p>Other than writing these into gradle files, you can write them in Kotlin as is in the  <a href="https://github.com/DroidKaigi/conference-app-2020/tree/master/buildSrc/src/main/java/dependencies" target="_blank">DroidKaigi conference-app</a>.</p>
+</aside>
+<h2 is-upgraded>Retry moving AccessTokenParameter to data/api</h2>
+<p>Retry the move! This time it should succeed.</p>
+<p>The same should be for ApiResponse, AccessTokenResponse, and GithubAuthService.</p>
+<p>Check if the build succeeds after you move the classes. During migrations, you should check your builds frequently.</p>
+<aside class="special"><p>Older build of Android Studio let you move multiple classes/files simultaneously. This feature is no longer available in 3.5.3.<br>Move each file one by one. Let&#39;s hope this feature comes back in the future.</p>
+</aside>
+<h2 is-upgraded>What about the remaining classes?</h2>
+<p>Some of you may have noticed, but the remaining classes in the api package cannot be migrated to the data/api module as-is.</p>
+<p>This is because these classes depend on other classes in the app module.</p>
+<p>In the next section, we will make the remaining classes multi-modularizable.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Moving to a model module" duration="15">
+        <p>GithubService and RepoSearchResponse depend on classes in the com.android.example.github.vo package.<br></p>
+<p>Here, we will add a model module that will be a place for common classes used for passing data between modules. This will remove the dependencies of GithubService and RepoSearchResponse and enable them to migrate to the data/api module.</p>
+<h2 is-upgraded>Adding the model module</h2>
+<p>Following the steps in the first split, add a model module in the project root.</p>
+<p>Set its package name to <code>com.android.example.model</code>.</p>
+<p class="image-container"><img style="width: 707.14px" src="img\165a96a2462cefc9.png"></p>
+<h2 is-upgraded>Editing build.gradle</h2>
+<p>Next, add libraries that the classes in com.android.example.github.vo depend on to model/build.gradle.</p>
+<p>Edit model/build.gradle like so:</p>
+<h3 is-upgraded>model/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.kotlin.stdlib
+
+    implementation deps.retrofit.gson
+    implementation deps.room.runtime
+
+    kapt deps.room.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>Add dependencies to the model module in app module and api module.</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;) // add
+    implementation project(&#34;:data:api&#34;)</code></pre>
+<h3 is-upgraded>api/build.gradle</h3>
+<pre><code>dependencies {
+    api project(&#34;:model&#34;) // add
+
+    implementation deps.lifecycle.livedata_ktx</code></pre>
+<aside class="special"><p>Why, in api/build.gradle, do we add the dependency with an api method?</p>
+<p>This is because, in GithubService, which is a public class in the api module, methods will return a class implemented in the model module.</p>
+</aside>
+<h3 is-upgraded>Migrating to the model module</h3>
+<p>Classes other than RepoSearchResult can be migrated to the model module. Let&#39;s move them one by one.</p>
+<p>We can&#39;t migrate RepoSearchResult because it depends on app module&#39;s GithubTypeConverters.</p>
+<p>Move each class while paying attention to each of their dependencies.</p>
+<aside class="special"><p>Should we migrate Room entities to the model module?</p>
+<p>Ideally, no. Classes in model can be used freely from other modules, and its dependencies should be limited to the model module only.</p>
+</aside>
+<h3 is-upgraded>Migration more classes to the data/api module</h3>
+<p>This should make all classes except AuthenticationInterceptor migration-ready.</p>
+<p>Let&#39;s look at the import statements in GithubService to check.</p>
+<pre><code>import androidx.lifecycle.LiveData
+import com.android.example.data.api.ApiResponse
+import com.android.example.model.Contributor
+import com.android.example.model.Repo
+import com.android.example.model.User
+import retrofit2.Call
+import retrofit2.http.GET
+import retrofit2.http.Path
+import retrofit2.http.Query</code></pre>
+<p>Besides public libraries such as LiveData and retrofit2, we can see that there only imports of the library module.</p>
+<p>Migrate RepoSearchResponse and GithubService to the data/api module.</p>
+<h2 is-upgraded>Resolving Data Binding compiler errors</h2>
+<p>Building the app generates Data Binding compiler errors:</p>
+<p class="image-container"><img style="width: 602.00px" src="img\4614bdafd90daa4.png"></p>
+<p>As it may be a bug in Android Studio&#39;s refactoring feature, variable types in the layout file are not suitably converted.</p>
+<p>Let&#39;s fix the errors in the layout file.</p>
+<h3 is-upgraded>Fixing search_fragment.xml</h3>
+<p>Change this</p>
+<pre><code>      &lt;variable
+            name=&#34;searchResult&#34;
+            type=&#34;com.android.example.model.Resource&#34; /&gt;</code></pre>
+<p>to this</p>
+<pre><code>       &lt;variable
+            name=&#34;searchResult&#34;
+            type=&#34;LiveData&amp;lt;Resource&amp;lt;List&amp;lt;Repo&gt;&gt;&gt;&#34; /&gt;</code></pre>
+<h3 is-upgraded>Fixing repo_fragment.xml</h3>
+<p>Change this</p>
+<pre><code>      &lt;variable
+            name=&#34;repo&#34;
+            type=&#34;com.android.example.model.Resource&#34; /&gt;</code></pre>
+<p>to this</p>
+<pre><code>       &lt;variable
+            name=&#34;repo&#34;
+            type=&#34;LiveData&amp;lt;Resource&amp;lt;List&amp;lt;Repo&gt;&gt;&gt;&#34; /&gt;</code></pre>
+<h3 is-upgraded>Fixing user_fragment.xml</h3>
+<p>Change this</p>
+<pre><code>      &lt;variable
+            name=&#34;user&#34;
+            type=&#34;com.android.example.model.Resource&#34; /&gt;</code></pre>
+<p>to this</p>
+<pre><code>       &lt;variable
+            name=&#34;repo&#34;
+            type=&#34;LiveData&amp;lt;Resource&amp;lt;User&gt;&gt;&#34; /&gt;</code></pre>
+<p>As a result, AuthenticationInterceptor becomes the only api-related class that hasn&#39;t been migrated to the data/api module.</p>
+<p class="image-container"><img style="width: 274.00px" src="img\11e06c601c108ac8.png"></p>
+<p>Since AuthenticationInterceptor depends on AccessTokenRepository, let&#39;s create a repository module.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Moving to a repository module" duration="15">
+        <p>Following the steps in the first split, create a repository module.</p>
+<p>Set its package name to <code>com.android.example.data.repository</code>.</p>
+<p class="image-container"><img style="width: 704.65px" src="img\725be44cc73e6572.png"></p>
+<p>Move the repository module to the data directory, and change its name in the settings.gradle.</p>
+<h3 is-upgraded>settings.gradle</h3>
+<pre><code>include &#39;:app&#39;, 
+        &#39;:model&#39;, 
+        &#39;:data:repository&#39;,
+        &#39;:data:api&#39;</code></pre>
+<h2 is-upgraded>Migrate AccessTokenRepository to the data/repository module</h2>
+<p>Since it will be difficult to migrate all of the classes at once, let&#39;s first migrate AccessTokenRepository which has a relatively small amount of dependencies.</p>
+<p>First, edit data/repository/build.gradle. Then add a reference to the data/repository module from the app module.</p>
+<h3 is-upgraded>data/repository/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+   compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = &#34;1.8&#34;
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    api project(&#34;:model&#34;)
+
+    implementation deps.core_ktx
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.kotlin.stdlib
+
+    implementation deps.dagger.runtime
+    kapt deps.dagger.compiler
+
+    implementation deps.kotpref.core
+    implementation deps.kotpref.initializer
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>Add a reference to the data/repository module from the app module.</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:repository&#34;) // add
+
+    implementation deps.app_compat
+    implementation deps.recyclerview</code></pre>
+<p>We can now migrate AccessTokenRepository to the data/repository module.</p>
+<h2 is-upgraded>Where to migrate AuthenticationInterceptor?</h2>
+<p>One would want to add api module references to the repository module and hide access to it, but unfortunately, we can&#39;t add circular references between modules.</p>
+<p>We could think of a number of solutions, but in this case, let&#39;s create an api-builder module that builds GithubService and GithubAuthService, and migrate AuthenticationInterceptor there.</p>
+<p>This way, we could prevent circular references between our modules.<br>Let&#39;s try it in our project.</p>
+<h2 is-upgraded>Create an api-builder module</h2>
+<p>Following the steps in the first split, create an api-builder module.</p>
+<p>Set its package name to <code>com.android.example.data.api_builder</code>.</p>
+<p class="image-container"><img style="width: 697.88px" src="img\3a796e16a2180c1d.png"></p>
+<p>Move the api-builder module to the data directory, and change its name in the settings.gradle.</p>
+<h3 is-upgraded>settings.gradle</h3>
+<pre><code>include &#39;:app&#39;, 
+        &#39;:model&#39;, 
+        &#39;:data:repository&#39;,
+        &#39;:data:api&#39;,
+        &#39;:data:api-builder&#39;</code></pre>
+<p>Edit the data/api-builder/build.gradle file as follows:</p>
+<h3 is-upgraded>data/api-builder/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    api project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:repository&#34;)
+
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.kotlin.stdlib
+    implementation deps.retrofit.runtime
+    implementation deps.retrofit.gson
+    api deps.okhttp_logging_interceptor
+
+    implementation deps.dagger.runtime
+    kapt deps.dagger.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>Edit to make the app module depend on the data/api-builder module.</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;) // add
+    implementation project(&#34;:data:repository&#34;)
+
+    implementation deps.app_compat
+    implementation deps.recyclerview</code></pre>
+<p>Move AuthenticationInterceptor to the data/api-builder module.</p>
+<h2 is-upgraded>Partially extract code from AppModule to other classes</h2>
+<p>Extract AppModule#provideGithubService and AppModule#provideGithubAuthService to a new class and migrate them to the data/api-builder module.</p>
+<p>Here, we will create a class named ApiBuilder in the app module.</p>
+<h3 is-upgraded>ApiBuilder</h3>
+<pre><code>class ApiBuilder @Inject constructor(
+    private val authenticationInterceptor: AuthenticationInterceptor
+) {
+    fun buildGithubService(
+        baseUrl: String,
+        loggingLevel: HttpLoggingInterceptor.Level
+    ): GithubService {
+        val client = OkHttpClient.Builder()
+            .addNetworkInterceptor(HttpLoggingInterceptor().apply { level = loggingLevel })
+            .addInterceptor(authenticationInterceptor)
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .addCallAdapterFactory(LiveDataCallAdapterFactory())
+            .client(client)
+            .build()
+            .create(GithubService::class.java)
+    }
+
+    fun buildGithubAuthService(
+        baseUrl: String
+    ): GithubAuthService {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GithubAuthService::class.java)
+    }
+}</code></pre>
+<p>Rewrite AppModule to use ApiBuilder.</p>
+<p>AppModule</p>
+<pre><code>   @Singleton
+    @Provides
+    fun provideGithubService(
+        apiBuilder: ApiBuilder
+    ): GithubService {
+        return apiBuilder.buildGithubService(
+            baseUrl = &#34;https://api.github.com/&#34;,
+            loggingLevel = HttpLoggingInterceptor.Level.BODY
+        )
+    }
+
+    @Singleton
+    @Provides
+    fun provideGithubAuthService(
+        apiBuilder: ApiBuilder
+    ): GithubAuthService {
+        return apiBuilder.buildGithubAuthService(
+            baseUrl = &#34;https://github.com/&#34;
+        )
+    }</code></pre>
+<p>Now, we can migrate</p>
+<ul>
+<li>LiveDataCallAdapter</li>
+<li>LiveDataCallAdapterFactory</li>
+<li>ApiBuilder</li>
+</ul>
+<p>over to the api-builder module. Move them.</p>
+<p>Next, we will migrate the remaining repository-related classes to the data/repository module. We will start by creating a data/db module as a module for depended db-related classes.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Moving to a db module" duration="20">
+        <h2 is-upgraded>Adding a db module</h2>
+<p>Following the steps in the first split, create an db module.</p>
+<p>Set its package name to <code>com.android.example.data.db</code>.</p>
+<p class="image-container"><img style="width: 684.96px" src="img\b2c00c483bc4bb4.png"></p>
+<p>Move the repository module to the data directory, and change its name in the settings.gradle.</p>
+<h3 is-upgraded>settings.gradle</h3>
+<pre><code>include &#39;:app&#39;, 
+        &#39;:model&#39;,
+        &#39;:data:db&#39;,
+        &#39;:data:repository&#39;,
+        &#39;:data:api&#39;,
+        &#39;:data:api-builder&#39;</code></pre>
+<p>Next, we will make changes to the OpenForTesting annotation, which db-related classes and repository classes depend on, so that it can be referenced from other modules.</p>
+<p>We will create a module for OpenForTesting, and add references in other modules.</p>
+<p>Note that the implementation of OpenForTesting differs between release and debug, so we will make two different modules as well.</p>
+<h2 is-upgraded>Adding a testing-release module and a testing-debug module</h2>
+<p>Following the steps in the first split, create a testing-release module and a testing-debug module.</p>
+<p>Set both package names to <code>com.android.example.testing</code>.</p>
+<p class="image-container"><img style="width: 704.68px" src="img\f4f36032f91c98b3.png"></p>
+<p class="image-container"><img style="width: 680.39px" src="img\8f23fa0751192937.png"></p>
+<p>Edit both build.gradle files so that it looks like the following:</p>
+<h3 is-upgraded>testing-release/build.gradle and testing-debug/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.kotlin.stdlib
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>Add dependencies to the testing-release module and the testing-debug module in each build.gradle file.</p>
+<p>Also, add a dependency to the data/api module in the app module.</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;) // add
+    releaseImplementation project(&#34;:testing-release&#34;) // add
+    debugImplementation project(&#34;:testing-debug&#34;) // add</code></pre>
+<h3 is-upgraded>data/db/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = &#34;1.8&#34;
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    api project(&#34;:model&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+
+    implementation deps.lifecycle.livedata_ktx
+    api deps.room.runtime
+    implementation deps.kotlin.stdlib
+    implementation deps.timber
+
+    kapt deps.room.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<h3 is-upgraded>data/repository/build.gradle</h3>
+<pre><code>dependencies {
+    api project(&#34;:model&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;) // add
+    debugImplementation project(&#34;:testing-debug&#34;) // add
+    implementation project(&#34;:data:api&#34;) // add
+
+    implementation deps.core_ktx    
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.kotlin.stdlib</code></pre>
+<p>Switch Build Variants to release, and move the OpenForTesting.kt from app/src/release to the testing-release module.</p>
+<p>Note that Android Studio&#39;s refactoring features function only with the currently selected Build Variant.</p>
+<p class="image-container"><img style="width: 602.00px" src="img\cd5f96e92e6187fd.png"></p>
+<p>Next, switch Build Variants back to debug and move the OpenForTesting.kt from app/src/debug to the testing-debug module.</p>
+<p class="image-container"><img style="width: 602.00px" src="img\d5a958b2c740840.png"></p>
+<p>Check if both release and debug Build Variants build successfully, just to make sure.</p>
+<h2 is-upgraded>Moving db-related classes to a data/db module</h2>
+<p>Move RepoSearchResult and all classes located under the com.android.example.github.db package to the db module.</p>
+<p>What other classes do the repository classes depend on?</p>
+<p>AppExecutors looks like the only remaining class. If we split this out to another module, we can migrate the repository classes to the data/repository module.</p>
+<h2 is-upgraded>Adding a executor module</h2>
+<p>Create an executor module and migrate AppExecutors to it.</p>
+<p>Following the steps in the first split, create a executor module.</p>
+<p>Set its package name to <code>com.android.example.executor</code>.</p>
+<p class="image-container"><img style="width: 602.00px" src="img\efde3db98efbb5b2.png"></p>
+<p>Add dependencies to both the repository module and the executor module.</p>
+<h3 is-upgraded>repository/build.gradle</h3>
+<pre><code>dependencies {
+    api project(&#34;:model&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:executor&#34;) // add
+
+    implementation deps.core_ktx
+    implementation deps.lifecycle.livedata_ktx</code></pre>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:executor&#34;) // add
+
+    implementation deps.app_compat</code></pre>
+<p>To prepare for migrating AppExecutors to the executor module, edit the executor/build.gradle as follows:</p>
+<h3 is-upgraded>executor/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.kotlin.stdlib
+
+    implementation deps.dagger.runtime
+    kapt deps.dagger.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>Migrate AppExecutors to the executor module.</p>
+<h2 is-upgraded>Moving repository-related classes to the data/repository module</h2>
+<p>Migrate AbsentLiveData and RateLimiter, which the repository classes depend on, to the data/repository module first.</p>
+<p>Then, make the data/repository module dependant on the data/db module.</p>
+<h3 is-upgraded>data/repository/build.gradle</h3>
+<pre><code>dependencies {
+    api project(&#34;:model&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:db&#34;) // add
+    implementation project(&#34;:executor&#34;)
+
+    implementation deps.core_ktx
+    implementation deps.lifecycle.livedata_ktx</code></pre>
+<p>Finally, migrate all classes under the com.android.example.github.repository package over to the repository module.</p>
+<p>We have now split everything in the app module into the following library modules:</p>
+<ul>
+<li>executor</li>
+<li>testing-release</li>
+<li>testing-debug</li>
+<li>model</li>
+<li>data/db</li>
+<li>data/repository</li>
+<li>data/api</li>
+<li>data/api-builder</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Moving to a login module" duration="20">
+        <p>Until now, we have been splitting classes that don&#39;t include views.</p>
+<p>Let&#39;s try modularizing the login screen.</p>
+<h2 is-upgraded>Creating a feature directory</h2>
+<p>Create a feature directory, in the same way we created the data directory.</p>
+<p class="image-container"><img style="width: 404.00px" src="img\9e2c4744fab17f37.png"></p>
+<h2 is-upgraded>Adding a login module</h2>
+<p>Set the package name to <code>com.android.example.feature.login</code>.</p>
+<p class="image-container"><img style="width: 602.00px" src="img\9b23657141ee70ee.png"></p>
+<p>Move the login module over to the feature directory, and change its name in the settings.gradle.</p>
+<h3 is-upgraded>settings.gradle</h3>
+<pre><code>include &#39;:app&#39;, 
+        &#39;:feature:login&#39;,
+        &#39;:executor&#39;,
+        &#39;:testing-release&#39;,
+        &#39;:testing-debug&#39;,
+        &#39;:model&#39;,
+        &#39;:data:db&#39;,
+        &#39;:data:repository&#39;,
+        &#39;:data:api&#39;,
+        &#39;:data:api-builder&#39;</code></pre>
+<p>For the feature/login module, we will migrate LoginActivity and LoginHelper.</p>
+<p>Keeping this in mind, edit the build.gradle file in the feature/login module as follows:</p>
+<h3 is-upgraded>feature/login/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:repository&#34;)
+
+    implementation deps.app_compat
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.lifecycle.runtime_ktx
+    implementation deps.browser
+    implementation deps.kotlin.stdlib
+    implementation deps.coroutines.android
+    implementation deps.timber
+
+    implementation deps.dagger.runtime
+    kapt deps.dagger.compiler
+    kapt deps.lifecycle.compiler
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>Add a feature/login module dependency to the app module.</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:executor&#34;)
+
+    implementation project(&#34;:feature:login&#34;) // add
+
+    implementation deps.app_compat
+    implementation deps.recyclerview</code></pre>
+<h2 is-upgraded>Unable to reference app module&#39;s BuildConfig from the library module</h2>
+<p>LoginHelper references the following constants in BuildConfig.</p>
+<ul>
+<li>GITHUB_CLIENT_ID</li>
+<li>GITHUB_CLIENT_SECRET</li>
+</ul>
+<p>However, the BuildConfig is declared in the app module, so it is unable to be referenced once LoginHelper is moved to the feature/login module.</p>
+<p>Here, we will define an EnvVar interface to wrap BuildConfig and place it in an envvar module. The implementation of EnvVar will be done in the app module.</p>
+<h2 is-upgraded>Adding an envvar module</h2>
+<p>Create the module and set its package name to <code>com.android.example.envvar</code>.</p>
+<p class="image-container"><img style="width: 602.00px" src="img\37b4d24e597c8d70.png"></p>
+<p>Edit the envvar/build.gradle file like so:</p>
+<h3 is-upgraded>envvar/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.kotlin.stdlib
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>Add an envvar module dependency to the feature/login module and the app module.</p>
+<h3 is-upgraded>feature/login/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:envvar&#34;) // add
+
+    implementation deps.app_compat
+    implementation deps.lifecycle.livedata_ktx</code></pre>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:executor&#34;)
+    implementation project(&#34;:envvar&#34;) // add
+
+    implementation project(&#34;:feature:login&#34;)
+
+    implementation deps.app_compat</code></pre>
+<p>Next, add an EnvVar interface to the envvar module.</p>
+<h3 is-upgraded>EnvVar</h3>
+<pre><code>package com.android.example.envvar
+
+interface EnvVar {
+    val GITHUB_CLIENT_ID: String
+    val GITHUB_CLIENT_SECRET: String
+}</code></pre>
+<p>Implement and provide the EnvVar in the AppModule.</p>
+<h3 is-upgraded>AppModule</h3>
+<pre><code>    @Singleton
+    @Provides
+    fun provieEnvVar(): EnvVar {
+        return object : EnvVar {
+            override val GITHUB_CLIENT_ID = BuildConfig.GITHUB_CLIENT_ID
+            override val GITHUB_CLIENT_SECRET = BuildConfig.GITHUB_CLIENT_SECRET
+        }
+    }</code></pre>
+<p>Remove any direct references to BuildConfig in LoginHelper, and use EnvVar instead.</p>
+<p>Import com.android.example.github.BuildConfig when referencing BuildConfig.</p>
+<h3 is-upgraded>LoginHelper</h3>
+<pre><code>class LoginHelper @Inject constructor(
+    private val githubAuthService: GithubAuthService,
+    private val accessTokenRepository: AccessTokenRepository,
+    private val envVar: EnvVar
+) {
+    fun generateAuthorizationUrl(): Uri =
+        Uri.Builder().apply {
+            scheme(&#34;https&#34;)
+            authority(&#34;github.com&#34;)
+            appendPath(&#34;login&#34;)
+            appendPath(&#34;oauth&#34;)
+            appendPath(&#34;authorize&#34;)
+            appendQueryParameter(&#34;client_id&#34;, envVar.GITHUB_CLIENT_ID)
+        }.build()
+
+    suspend fun handleAuthRedirect(intent: Intent): Boolean {
+        val uri = intent.data ?: return false
+        if (!uri.toString().startsWith(&#34;dgbs://login&#34;)) return false
+        val tempCode = uri.getQueryParameter(&#34;code&#34;) ?: return false
+
+        Timber.i(&#34;code: $tempCode&#34;)
+
+        val param = AccessTokenParameter(
+            clientId = envVar.GITHUB_CLIENT_ID,
+            clientSecret = envVar.GITHUB_CLIENT_SECRET,
+            code = tempCode
+        )
+
+        return runCatching {
+            val resp = githubAuthService.createAccessToken(param)
+            accessTokenRepository.save(AccessToken(resp.accessToken))
+        }.onFailure {
+            Timber.e(it, &#34;createAccessToken failed!&#34;)
+        }.isSuccess
+    }
+}</code></pre>
+<p>This should make LoginHelper migratable to the feature/login module. Move it.</p>
+<p>Because LoginActivity is dependant on the interface Injectable, we are unable to migrate it out of the app module.</p>
+<p>Let&#39;s create a di module and move Injectable there.</p>
+<h2 is-upgraded>Adding a di module</h2>
+<p>Create a di module and set its package nameは<code>com.android.example.di</code>.</p>
+<p class="image-container"><img style="width: 602.00px" src="img\dd6a9fbb8e67cb73.png"></p>
+<p>Edit the di/build.gradle file like so:</p>
+<h3 is-upgraded>di/build.gradle</h3>
+<pre><code>apply plugin: &#39;com.android.library&#39;
+apply plugin: &#39;kotlin-android&#39;
+apply plugin: &#39;kotlin-android-extensions&#39;
+apply plugin: &#39;kotlin-kapt&#39;
+
+android {
+    compileSdkVersion build_versions.target_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdkVersion build_versions.min_sdk
+        targetSdkVersion build_versions.target_sdk
+        versionCode 1
+        versionName &#34;1.0&#34;
+
+        testInstrumentationRunner &#34;androidx.test.runner.AndroidJUnitRunner&#34;
+        consumerProguardFiles &#39;consumer-rules.pro&#39;
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile(&#39;proguard-android-optimize.txt&#39;), &#39;proguard-rules.pro&#39;
+        }
+    }
+
+}
+
+dependencies {
+    implementation deps.kotlin.stdlib
+
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.espresso.core
+
+    testImplementation deps.junit
+}</code></pre>
+<p>Add a di module dependency to the app module and the feature/login module.</p>
+<h3 is-upgraded>app/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:executor&#34;)
+    implementation project(&#34;:envvar&#34;)
+    implementation project(&#34;:di&#34;) // add
+
+    implementation project(&#34;:feature:login&#34;)
+
+    implementation deps.app_compat</code></pre>
+<h3 is-upgraded>feature/login/build.gradle</h3>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:envvar&#34;)
+    implementation project(&#34;:di&#34;) // add
+
+    implementation deps.app_compat</code></pre>
+<p>Next, migrate Injectable to the di module.</p>
+<p>With this, LoginActivity has finally become migratable to the feature/login module.</p>
+<p>Move activity_login.xml and LoginActivity in this order to the feature/login module.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Cleaning up" duration="5">
+        <h2 is-upgraded>Revert changes to /build.gradle made when adding modules</h2>
+<p>When you add a module, Android Studio adds an unnecessary kotlin-gradle-plugin dependency in the root build.gradle. Remove these.</p>
+<p>The final build.gradle should look like this:</p>
+<h3 is-upgraded>build.gradle</h3>
+<pre><code>buildscript {
+    apply from: &#39;versions.gradle&#39;
+    addRepos(repositories)
+    dependencies {
+        classpath deps.android_gradle_plugin
+        classpath deps.kotlin.plugin
+        classpath deps.kotlin.allopen
+        classpath deps.navigation.safe_args_plugin
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+allprojects {
+    addRepos(repositories)
+}
+
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}</code></pre>
+<h2 is-upgraded>Remove unnecessary dependencies in app/build.gradle</h2>
+<p>Remove any unnecessary dependencies in app/build.gradle as well. Some dependencies are only needed in their relevant library modules&#39; build.gradle.</p>
+<p>The final app/build.gradle should look like this:</p>
+<pre><code>dependencies {
+    implementation project(&#34;:model&#34;)
+    implementation project(&#34;:data:api-builder&#34;)
+    implementation project(&#34;:data:repository&#34;)
+    implementation project(&#34;:data:db&#34;)
+    releaseImplementation project(&#34;:testing-release&#34;)
+    debugImplementation project(&#34;:testing-debug&#34;)
+    implementation project(&#34;:executor&#34;)
+    implementation project(&#34;:envvar&#34;)
+    implementation project(&#34;:di&#34;)
+
+    implementation project(&#34;:feature:login&#34;)
+
+    implementation deps.app_compat
+    implementation deps.recyclerview
+    implementation deps.cardview
+    implementation deps.material
+    implementation deps.core_ktx
+    implementation deps.transition
+    implementation deps.navigation.fragment_ktx
+    implementation deps.lifecycle.livedata_ktx
+    implementation deps.lifecycle.runtime_ktx
+    implementation deps.lifecycle.java8
+    implementation deps.glide.runtime
+
+    implementation deps.dagger.runtime
+    implementation deps.dagger.android
+    implementation deps.dagger.android_support
+    implementation deps.constraint_layout
+    implementation deps.kotlin.stdlib
+    implementation deps.coroutines.android
+
+    implementation deps.timber
+
+    kapt deps.dagger.android_support_compiler
+    kapt deps.dagger.compiler
+    kapt deps.lifecycle.compiler
+
+    testImplementation deps.junit
+    testImplementation deps.mock_web_server
+    testImplementation deps.arch_core.testing
+    testImplementation deps.mockito.core
+
+    androidTestImplementation deps.atsl.core
+    androidTestImplementation deps.atsl.ext_junit
+    androidTestImplementation deps.atsl.runner
+    androidTestImplementation deps.atsl.rules
+
+    androidTestImplementation deps.app_compat
+    androidTestImplementation deps.recyclerview
+    androidTestImplementation deps.cardview
+    androidTestImplementation deps.material
+
+    androidTestImplementation deps.espresso.core
+    androidTestImplementation deps.espresso.contrib
+
+    androidTestImplementation deps.arch_core.testing
+    androidTestImplementation deps.mockito.core
+    androidTestImplementation deps.mockito.android
+}</code></pre>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Conclusion" duration="0">
+        <p>How did it go?</p>
+<p>In this codelab, we looked at an app that started its development over three years ago, and split the app into multiple modules.</p>
+<p>Due to this being a codelab, we have split the app into very small modules.</p>
+<p>In practice, consolidating executor, envvar, and di into a more general core module may also a valid choice.<br>Giving a general name to a module, however, comes at the risk of becoming a &#34;God&#34; module containing all sorts of classes. You should choose the name carefully, and split the module when it starts becoming large.</p>
+<p>Also, to prevent the codelab from becoming too lengthy, this codelab does not touch on strategies on Dagger in multi module environments.<br>Refer to apps like the DroidKaigi Conference app and try to enhance the Dagger-related code in the app.</p>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/codelab-elements/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/prettify.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/codelab-elements.js"></script>
+
+</body>
+</html>

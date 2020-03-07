@@ -1,0 +1,23 @@
+{
+  "environment": "web",
+  "format": "html",
+  "prefix": "https://storage.googleapis.com",
+  "mainga": "UA-49880327-14",
+  "updated": "2020-03-02T08:41:08Z",
+  "id": "",
+  "duration": 100,
+  "title": "Multi-Modularizing Apps",
+  "authors": "DroidKaigi Committee",
+  "summary": "How to split an existing app into multiple modules.",
+  "source": "1zV6emkBT6VZkcwSQDuh3806uobQM5Cf2dgxdsvpabDM",
+  "theme": "androd",
+  "status": [
+    "draft"
+  ],
+  "category": [
+    "Androd"
+  ],
+  "tags": [],
+  "feedback": "https://github.com/DroidKaigi/codelab-2020/issues",
+  "url": ""
+}
