@@ -1,0 +1,22 @@
+{
+  "environment": "web",
+  "format": "html",
+  "prefix": "https://storage.googleapis.com",
+  "mainga": "UA-49880327-14",
+  "updated": "2020-08-26T11:35:53Z",
+  "id": "",
+  "duration": 55,
+  "title": "ML KitとCameraXで言語を認識・識別して翻訳する",
+  "authors": "carenc",
+  "summary": "ML KitとCameraXで言語を認識・識別して翻訳する",
+  "source": "1uxHU0S_AB6vGJDI_F_cCFG6oYkYYG87ApaS_Pfxi37s",
+  "theme": "androd",
+  "status": [
+    "draft"
+  ],
+  "category": [
+    "Androd"
+  ],
+  "tags": [],
+  "url": ""
+}

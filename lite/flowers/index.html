@@ -1,0 +1,293 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>AndroidでTensorFlow Liteを使って花を認識する（ベータ版）</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/codelab-elements/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14"></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  id=""
+                  title="AndroidでTensorFlow Liteを使って花を認識する（ベータ版）"
+                  environment="web"
+                  feedback-link="">
+    
+      <google-codelab-step label="はじめに" duration="0">
+        <aside class="special"><p>このベータ版コードラボではTensorFlow Lite Model MakerとAndroid Studio 4.1 Beta 1以降を使った最新のツールを紹介します。また動作を確認するのに物理的なAndroid端末が必要になります。安定版のコードラボを試したい場合は<a href="https://codelabs.developers.google.com/codelabs/recognize-flowers-with-tensorflow-on-android/index.html?index=..%2F..index#0" target="_blank">こちら</a>を参照ください。</p>
+</aside>
+<p>TensorFlowは多目的機械学習フレームワークです。クラウド内で複数のクラスタをまたがった巨大なモデルの訓練からスマートフォンのような組み込みシステムでのローカルなモデルの実行まで、幅広い用途に使用することができます。</p>
+<p>このコードラボでは、<a href="https://www.tensorflow.org/lite/" target="_blank">TensorFlow Lite</a>を使ってAndroid端末で画像認識モデルを実行します。</p>
+<h4 is-upgraded><strong>このコードラボで学べること</strong></h4>
+<ul>
+<li><a href="https://www.tensorflow.org/lite/tutorials/model_maker_image_classification" target="_blank">TensorFlow Lite Model Maker</a>を使用したカスタム画像分類器の訓練方法</li>
+<li>Android StudioでTensorFlow Liteモデルをインポートし、CameraXを使用してカスタムモデルをAndroidアプリに導入する方法</li>
+<li>スマートフォンでGPUを使用してモデルを高速化する方法</li>
+</ul>
+<h3 is-upgraded><strong>このコードラボで作るもの</strong></h3>
+<p>TensorFlowの画像分類プログラムを実行して花を分類する簡単なカメラアプリを作ります。</p>
+<p class="image-container"><img style="width: 601.70px" src="img\f11c2821f2c8311d.png"></p>
+<p>License: <a href="https://www.pexels.com/photo/photo-of-sunflower-1214259/" target="_blank">Free to use</a></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Colabを使って花分類器を訓練させる" duration="5">
+        <p><a href="https://colab.sandbox.google.com/github/tensorflow/examples/blob/master/lite/codelabs/flower_classification/ml/Flower_Classification_with_TFLite_Model_Maker.ipynb" target="_blank">Colab</a>を開いてみましょう。TensorFlow Lite transfer learningを使って、Kerasで分類器を訓練して花を認識する方法を確認します。</p>
+<p>Colabの具体的な操作方法や実施している内容の解説は、下記の動画が参考になります。<br><a href="https://www.youtube.com/watch?v=s_XOVkjXQbU" target="_blank">https://www.youtube.com/watch?v=s_XOVkjXQbU</a></p>
+<aside class="special"><p>Colabとは？</p>
+<p>Colaboratory（略称: Colab）は、Google Research のツールです。Colab では、誰でもブラウザ上で Python を記述して実行できるため、機械学習、データ分析、教育に特に適しています。具体的には、GPU などのコンピューティング リソースに自由にアクセスしながら特別な設定なしにご利用いただけるホスト型の Jupyter Notebook サービスです。<br><a href="https://research.google.com/colaboratory/faq.html" target="_blank">https://research.google.com/colaboratory/faq.html</a></p>
+</aside>
+<aside class="special"><p>Kerasとは？<br>Kerasは，Pythonで書かれた，<a href="https://github.com/tensorflow/tensorflow" target="_blank">TensorFlow</a>または<a href="https://github.com/Microsoft/cntk" target="_blank">CNTK</a>，<a href="https://github.com/Theano/Theano" target="_blank">Theano</a>上で実行可能な高水準のニューラルネットワークライブラリです． Kerasは，迅速な実験を可能にすることに重点を置いて開発されました． アイデアから結果に到達するまでのリードタイムをできるだけ小さくすることが，良い研究をするための鍵になります．<br><a href="https://keras.io/ja/" target="_blank">https://keras.io/ja/</a></p>
+</aside>
+<aside class="warning"><p>先に進む前に、</p>
+<ol type="1" start="1">
+<li>訓練されたモデル(model.tflite)をダウンロードして、</li>
+<li>FlowerModel.tfliteのファイル名を変更</li>
+</ol>
+<p>したことを確認してください。</p>
+<p>一部のブラウザではダウンロードがブロックされます：</p>
+<p class="image-container"><img style="width: 587.00px" src="img\9404b00a869622de.png"></p>
+<p>Colabがファイルをダウンロードすることを許可する必要がある場合があります：</p>
+<p class="image-container"><img style="width: 320.00px" src="img\49fc988cb6e1e604.png"></p>
+</aside>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="作業ディレクトリのセットアップ" duration="1">
+        <h3 is-upgraded><strong>Gitリポジトリをcloneする</strong></h3>
+<p>以下のコマンドでこのコードラボで必要なファイルが含まれるGitリポジトリをcloneします。</p>
+<pre>git clone https://github.com/hoitab/TFLClassify.git</pre>
+<p>次に、cloneしたディレクトリに移動します。ここでこのコードラボの残りの手順を行います。</p>
+<pre>cd TFLClassify</pre>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Androidアプリの骨子をセットアップ" duration="5">
+        <h3 is-upgraded><strong>Android Studioのインストール</strong></h3>
+<p>まだインストールしていない場合は、<a href="https://developer.android.com/studio/preview" target="_blank">AndroidStudio 4.1 Beta 1以降をインストールして</a>ください。</p>
+<h3 is-upgraded><strong>Android Studioでプロジェクトを開く</strong></h3>
+<p>以下の手順でAndroid Studioでプロジェクトを開きます。</p>
+<ol type="1" start="1">
+<li>Android Studioを起動する。ロードが終わったら、以下のポップアップから&#34;Open an Existing project&#34;を選択する</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\b616917a0aa91edf.png"></p>
+<ol type="1" start="2">
+<li>ファイル選択で、作業ディレクトリ内の<code>TFLClassify/build.gradle</code>を選ぶ。</li>
+</ol>
+<aside class="special"><p>このプロジェクトには、<strong>start</strong>と<strong>finish</strong>の２つのモジュールがあります。作業に行き詰まった場合は<strong>finish</strong>を参照してヒントにしましょう。</p>
+</aside>
+<ol type="1" start="3">
+<li>初回はgradle wrapperの使用に関する&#34;Gradle Sync&#34;ポップアップが表示されます。「OK」をクリックします。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\8f53dc6a60269780.png"></p>
+<ol type="1" start="4">
+<li>まだの場合はスマートフォンの開発者モードとUSBデバッグを有効にします。これは1回限りのセットアップです。設定するには<a href="https://developer.android.com/studio/debug/dev-options.html#enable" target="_blank">この手順</a>に従ってください。</li>
+<li>プロジェクトとスマートフォン両方の設定が終わったら、実際に端末で動かしてみましょう。<code>TFL_Classify.start</code>を選択してツールバーのrunボタンをクリックします。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\9715364a916259b1.png"></p>
+<ol type="1" start="6">
+<li>Tensorflow Demoにカメラへのアクセスを許可します。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\c70385b58db6a27e.png"></p>
+<ol type="1" start="7">
+<li>結果が表示される場所にランダムな数値が入った以下の画面が端末に表示されるはずです。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\805802b9fab8e7d4.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="AndroidアプリにTensorFlow Liteを追加する" duration="5">
+        <ol type="1" start="1">
+<li>画面左側のプロジェクトエクスプローラーから<code>start</code>モジュールを選択します。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\22a090727360bb7f.png"></p>
+<ol type="1" start="2">
+<li><code>start</code>モジュールを右クリック、または<code>File</code>から<code>New</code> &gt; <code>Other</code> &gt; <code>TensorFlow Lite Model</code>を選択します</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\36e91eccefd0cdda.png"></p>
+<ol type="1" start="3">
+<li>先程ダウンロードした、訓練済みの<code>FlowerModel.tflite</code>のパスを選択します。</li>
+</ol>
+<aside class="special"><p>このツールを使うと、自動的に<strong>build.gradle</strong>にML Model bindingや依存が挿入されモジュールの依存設定が行われます。</p>
+</aside>
+<p class="image-container"><img style="width: 601.70px" src="img\7806acf37bcab677.png"></p>
+<ol type="1" start="4">
+<li><code>Finish</code>をクリックします。</li>
+<li>最後に以下のような画面が表示されるはずです。<code>FlowerModel.tflite</code>のインポートが成功して、入出力などモデルに関する高レベルな情報がサンプルコードとともに表示されます。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\24460f53df5d5da4.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="（任意）TODOリストを使う" duration="5">
+        <p>コードラボの更新に必要な場所へピンポイントで遷移するには、TODOリストが便利です。またAndroidプロジェクトで将来的に変更が必要な箇所を覚えておくのにも使えます。TODO項目を追加するにはコメントと<code>TODO</code>キーワードを使用します。TODOの一覧を確認するには以下の方法があります。</p>
+<ol type="1" start="1">
+<li>やることを確認するにはTODOリストを表示するのが良いでしょう。画面上部のメニューから <code>View</code> &gt; <code>Tool Windows</code> &gt; <code>TODO</code> を選択します。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\220b955c407460fa.png"></p>
+<ol type="1" start="2">
+<li>初期設定ではすべてのモジュールのTODOを表示するので、すこし分かりづらいかもしれません。TODOパネル端のgroup byボタンをクリックして<code>Modules</code>を選択することでstartのTODOのみに絞り込むことができます。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\554a02545dd2b618.png"></p>
+<ol type="1" start="3">
+<li>startモジュール内の項目を展開します。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\dd338355cc0e629c.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="TensorFlow Liteでカスタムモデル実行する" duration="5">
+        <ol type="1" start="1">
+<li>TODOリストのTODO 1をクリックするかMainActivity.ktファイルを開いてTODO 1を探し、以下の行を追加してモデルの初期化を行います。</li>
+</ol>
+<pre><code>private class ImageAnalyzer(ctx: Context, private val listener: RecognitionListener) :
+        ImageAnalysis.Analyzer {
+
+  ...
+  // TODO 1: Add class variable TensorFlow Lite Model
+  private val flowerModel = FlowerModel.newInstance(ctx)
+
+  ...
+}</code></pre>
+<ol type="1" start="2">
+<li>CameraX Analyzerのanalyzeメソッドの中ではカメラからの入力の<code>ImageProxy</code>を<code>Bitmap</code>に変換し、<code>TensorImage</code>オブジェクトを生成して、推論プロセスに使用します。</li>
+</ol>
+<aside class="special"><p>このツールでは画像の入力は<strong>Bitmap</strong>形式である必要があります。</p>
+<ul>
+<li>これはつまり<strong>ImageProxy</strong>ではなくファイルを入力として使う場合、<strong>fromBitmap</strong>メソッドに直接<strong>Bitmap</strong>として流し込むことができます。</li>
+<li><strong>ImageProxy</strong>がどう<strong>Bitmap</strong>に変換されているかについては、<strong>toBitmap</strong>メソッドと<strong>YuvToRgbConverter</strong>を参照ください。またこれは将来的な<strong>TensorImage</strong>の<strong>ImageProxy</strong>対応までの暫定的なメソッドです。</li>
+</ul>
+</aside>
+<pre><code>override fun analyze(imageProxy: ImageProxy) {
+  ...
+  // TODO 2: Convert Image to Bitmap then to TensorImage
+  val tfImage = TensorImage.fromBitmap(toBitmap(imageProxy))
+  ...
+}</code></pre>
+<ol type="1" start="3">
+<li>画像を処理して、結果に対し以下の操作を行います。</li>
+</ol>
+<ol type="1" start="1">
+<li>属性スコアを使って確立の高い順に結果をソートする</li>
+<li><code>MAX_RESULT_DISPLAY</code>で定義される上位k個の結果取得する。この値を任意のものに差し替えて結果の数を変更することもできます。</li>
+</ol>
+<pre><code>override fun analyze(imageProxy: ImageProxy) {
+  ...
+  // TODO 3: Process the image using the trained model, sort and pick out the top results
+  val outputs = flowerModel.process(tfImage)
+      .probabilityAsCategoryList.apply {
+          sortByDescending { it.score } // Sort with highest confidence first
+      }.take(MAX_RESULT_DISPLAY) // take the top results
+
+  ...
+}</code></pre>
+<ol type="1" start="4">
+<li>ソートしてフィルタした結果をデータオブジェクト<code>Recognition</code>に変換して、<a href="https://developer.android.com/topic/libraries/data-binding" target="_blank">Data Binding</a>を使って<code>RecyclerView</code>に流し込めるようにします。</li>
+</ol>
+<pre><code>override fun analyze(imageProxy: ImageProxy) {
+  ...
+  // TODO 4: Converting the top probability items into a list of recognitions
+  for (output in outputs) {
+      items.add(Recognition(output.label, output.score))
+  }
+  ...
+}</code></pre>
+<ol type="1" start="5">
+<li>以前表示されていたプレースホルダーの結果を生成する以下の行をコメントアウトもしくは削除します。</li>
+</ol>
+<pre><code>// START - Placeholder code at the start of the codelab. Comment this block of code out.
+for (i in 0..MAX_RESULT_DISPLAY-1){
+    items.add(Recognition(&#34;Fake label $i&#34;, Random.nextFloat()))
+}
+// END - Placeholder code at the start of the codelab. Comment this block of code out.</code></pre>
+<ol type="1" start="6">
+<li><code>TFL_Classify.start</code>を選択してツールバーのrunボタンをクリックして、実際の端末でアプリを起動してみます。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\9715364a916259b1.png"></p>
+<ol type="1" start="7">
+<li>以下の画面が表示され、ランダムな値の代わりに実際の結果が表示されるようになります。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\f11c2821f2c8311d.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="（任意）GPUデリゲートで推論を高速化する" duration="5">
+        <p>TensorFlow Liteは複数のハードウェアアクセラレータに対応し、モバイル端末での推論を高速化することができます。<a href="https://www.tensorflow.org/lite/performance/gpu" target="_blank">GPU</a>も利用できるアクセラレータのひとつで、デリゲート機能を使って比較的簡単に使用することができます。</p>
+<ol type="1" start="1">
+<li><code>start</code>モジュールのbuild.gradleを開くか、TODOリストのTODO 5を選択して、以下の依存を追加します。</li>
+</ol>
+<pre><code>// TODO 5: Optional GPU Delegates    
+implementation &#39;org.tensorflow:tensorflow-lite-gpu:2.2.0&#39;</code></pre>
+<ol type="1" start="2">
+<li>MainActivity.ktファイルに戻るかTODOリストのTODO 6を選択して以下のモデルオプションを初期化します。</li>
+</ol>
+<pre><code>private class ImageAnalyzer(ctx: Context, private val listener: RecognitionListener) :
+        ImageAnalysis.Analyzer {
+  ...
+  // TODO 6. Optional GPU acceleration
+  private val options = Model.Options.Builder().setDevice(Model.Device.GPU).build()
+  ...
+}</code></pre>
+<ol type="1" start="3">
+<li>引数に<code>options</code>を追加してモデルの初期化処理を変更します。</li>
+</ol>
+<pre><code>private class ImageAnalyzer(ctx: Context, private val listener: RecognitionListener) :
+        ImageAnalysis.Analyzer {
+
+  ...
+  // TODO 1: Add class variable TensorFlow Lite Model
+  private val flowerModel = FlowerModel.newInstance(ctx, options)
+
+  ...
+}</code></pre>
+<ol type="1" start="4">
+<li><code>TFL_Classify.start</code>を選択した上でツールバーのrunボタンをクリックして、実機でアプリを実行します。</li>
+</ol>
+<p class="image-container"><img style="width: 601.70px" src="img\9715364a916259b1.png"></p>
+<aside class="special"><p>ハイ・ミドルレンジの端末では、CPUよりもGPUのほうが格段に高速です。一方でエントリー機には遅いGPUが搭載されていることが多く、機種によって推論の高速化度合いが異なります。</p>
+</aside>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="コードラボが終わったら" duration="0">
+        <p>以下のリンクをたどってみましょう</p>
+<ul>
+<li>TFLiteについてもっと学ぶには<a href="https://www.tensorflow.org/lite/" target="_blank">tensorflow.org</a>のドキュメントや<a href="https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite" target="_blank">コードリポジトリ</a>があります。</li>
+<li>音声ホットワード検知器やスマート返信のオンデバイス版など、<a href="https://www.tensorflow.org/lite/examples" target="_blank">予め訓練されたTFLiteモデル</a>を試してみましょう。</li>
+<li><a href="http://tensorflow.org/alpha" target="_blank">Getting started</a>の資料でTensorFlow全般について学んでみましょう。</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/codelab-elements/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/prettify.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/codelab-elements.js"></script>
+
+</body>
+</html>

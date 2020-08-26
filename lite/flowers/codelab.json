@@ -1,0 +1,22 @@
+{
+  "environment": "web",
+  "format": "html",
+  "prefix": "https://storage.googleapis.com",
+  "mainga": "UA-49880327-14",
+  "updated": "2020-08-26T12:46:03Z",
+  "id": "",
+  "duration": 31,
+  "title": "AndroidでTensorFlow Liteを使って花を認識する（ベータ版）",
+  "authors": "Hoi Lam (revamping author), Yash Katariya (original author)",
+  "summary": "AndroidでTensorFlow Liteを使って花を認識する（ベータ版）",
+  "source": "1dfvEw_y6e0Z6zAPDFlGQdZUu3IqZvlRE_i-M87U2xuk",
+  "theme": "androd",
+  "status": [
+    "draft"
+  ],
+  "category": [
+    "Androd"
+  ],
+  "tags": [],
+  "url": ""
+}

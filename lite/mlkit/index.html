@@ -1,0 +1,228 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>ML KitとCameraXで言語を認識・識別して翻訳する</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/codelab-elements/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14"></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  id=""
+                  title="ML KitとCameraXで言語を認識・識別して翻訳する"
+                  environment="web"
+                  feedback-link="">
+    
+      <google-codelab-step label="はじめに" duration="5">
+        <p>ML Kitは、AndroidとAndroidアプリにおいてGoogleの機械学習における専門技術を強力かつ使いやすいパッケージで実現できるモバイルSDKです。機械学習がはじめてでも経験者でも、たった数行のコードで必要な機能を実装することができます。はじめるのにニューラルネットワークやモデル最適化についての深い知識も必要ありません。</p>
+<h3 is-upgraded><strong>仕組み</strong></h3>
+<p>ML Kitを使うと、<a href="https://developers.google.com/vision/" target="_blank"> Mobile Vision</a> や <a href="https://www.tensorflow.org/mobile/tflite/" target="_blank">TensorFlow Lite </a>といったGoogleのML技術をひとつのSDKにまとまることで、ML技術をアプリで簡単に活用できるようになります。Mobile Visionのオンデバイスモデルが提供するリアルタイム性もTensorFlow Liteのカスタムモデルの柔軟性も、ML Kitを使うとたった数行のコードで利用できるようになります。</p>
+<p>このコードラボでは、すでにあるAndroidアプリでカメラからの映像からテキスト認識、テキストの言語の識別と翻訳をリアルタイムで行うための簡単な手順を取り上げます。また、ML Kit APIとCameraXを組み合わせて使う際のベストプラクティスについても取り上げます。</p>
+<h3 is-upgraded><strong>このコードラボで作るもの</strong></h3>
+<p>このコードラボでは、ML Kitを使ったAndroidアプリを作ります。アプリはML Kitのオンデバイス・テキスト認識APIを使い、リアルタイムで表示されるカメラ映像のテキストを認識します。次にML Kitの言語識別APIを使って認識したテキストの言語を識別します。最後に、ML Kitの翻訳APIを使って認識したテキストを59種類の言語の中から選択したものに翻訳します。</p>
+<p>最終的には、以下のような画面が表示されます。</p>
+<p class="image-container"><img style="width: 601.70px" src="img\7c759a2e964a0255.png"></p>
+<h3 is-upgraded><strong>このコードラボで学べること</strong></h3>
+<ul>
+<li>ML Kit SDKを使ってどんなAndroidアプリでも機械学習の機能を簡単に活用する方法</li>
+<li>ML Kitのテキスト認識API、言語識別API、翻訳APIとそれらの機能</li>
+<li>ML Kit APIとCameraXライブラリを組み合わせて使う方法</li>
+</ul>
+<h3 is-upgraded><strong>このコードラボに必要なもの</strong></h3>
+<ul>
+<li>比較的最近のバージョンのAndroid Studio (v4.0+)</li>
+<li>物理的なAndroid端末</li>
+<li><a href="https://github.com/googlecodelabs/mlkit-android/archive/master.zip" target="_blank">サンプルコード</a></li>
+<li>KotlinでのAndroid開発の基礎的な知識</li>
+</ul>
+<p>このコードラボはML Kitにフォーカスして進みます。コードラボに関係のないコンセプトやコードはすでに提供・実装されています。</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="セットアップ" duration="5">
+        <h3 is-upgraded><strong>コードをダウンロードする</strong></h3>
+<p>以下のリンクをクリックしてこのコードラボに必要なコードすべてをダウンロードします。</p>
+<p><a href="https://github.com/googlecodelabs/mlkit-android/archive/master.zip" target="_blank"><paper-button class="colored" raised>ソースコードのダウンロード</paper-button></a></p>
+<p>ダウンロードしたzipファイルを展開します。必要なファイルすべてが入ったルートフォルダ（<code>mlkit-android</code>）が展開されます。このコードラボでは、<code>translate</code> サブディレクトリ内のリソースのみが必要になりｍす。</p>
+<p><code>mlkit-android</code> リポジトリの <code>transalate</code> サブディレクトリには、次のディレクトリが含まれています。</p>
+<p><code>starter</code> -このコードラボを進めるにあたって最初の土台となるコード</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="ML KitとCameraXの依存を確認する" duration="5">
+        <p><code>app/build.gradle</code>ファイルで、必要なML KitとCameraXの依存が含まれていることを確認します。</p>
+<pre><code>// CameraX dependencies
+def camerax_version = &#34;1.0.0-beta05&#34;
+implementation &#34;androidx.camera:camera-core:${camerax_version}&#34;
+implementation &#34;androidx.camera:camera-camera2:${camerax_version}&#34;
+implementation &#34;androidx.camera:camera-lifecycle:$camerax_version&#34;
+implementation &#34;androidx.camera:camera-view:1.0.0-alpha12&#34;
+
+// ML Kit dependencies
+implementation &#39;com.google.android.gms:play-services-mlkit-text-recognition:16.0.0&#39;
+implementation &#39;com.google.mlkit:language-id:16.0.0&#39;
+implementation &#39;com.google.mlkit:translate:16.0.0&#39;</code></pre>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="最初にアプリを実行する" duration="5">
+        <p>Android Studioにプロジェクトを取り込んでML Kitの依存の確認ができたら、アプリを動かしてみましょう！PCに実際のAndroid端末をつないで、Android StudioのツールバーからRunを選択します。</p>
+<p>端末でアプリが起動して、カメラを向けた先の映像が表示されるはずです。この時点ではまだテキスト認識機能は実装されていません。</p>
+<p class="image-container"><img style="width: 601.70px" src="img\3a1f0ca43f6adde4.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="テキスト認識機能を追加する" duration="10">
+        <p>次にカメラ映像からアプリがテキストを認識する機能を追加します。</p>
+<h3 is-upgraded><strong>Ml Kit Text Detectorをインスタンス化する</strong></h3>
+<p><code>Textanalyzer.kt</code>の先頭に次のフィールドを追加します。これは、後の手順で使用するテキスト認識機能を扱う際に参照する方法です。</p>
+<h3 is-upgraded>TextAnalyzer.kt</h3>
+<pre><code>private val detector = TextRecognition.getClient()</code></pre>
+<h3 is-upgraded><strong>カメラバッファから生成したVision Imageに対してオンデバイス・テキスト認識機能を使う</strong></h3>
+<p>CameraXライブラリは画像認識に使えるカメラからの画像ストリームを提供してくれます。TextAnalyzerクラスの<code>recognizeTextOnDevice()</code>メソッドを置き換えて、ML Kitのテキスト認識機能を画像に適用するようにしましょう。</p>
+<h3 is-upgraded>TextAnalyzer.kt</h3>
+<pre><code>private fun recognizeTextOnDevice(
+   image: InputImage
+): Task&lt;Text&gt; {
+   // Pass image to an ML Kit Vision API
+   return detector.process(image)
+       .addOnSuccessListener { visionText -&gt;
+           // Task completed successfully
+           result.value = visionText.text
+       }
+       .addOnFailureListener { exception -&gt;
+           // Task failed with an exception
+           Log.e(TAG, &#34;Text recognition error&#34;, exception)
+           val message = getErrorMessage(exception)
+           message?.let {
+               Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+           }
+       }
+}</code></pre>
+<p>以下のコードは、上記のメソッドを呼んでテキスト認識を始める方法を示します。<code>analyze()</code>メソッドの最後に追加しましょう。画像の分析が終わったら<code>ImageProxy.close()</code>を呼ばなければいけないことに注意してください。カメラからの映像がそれ以上分析できなくなってしまいます。</p>
+<h3 is-upgraded>TextAnalyzer.kt</h3>
+<pre><code>recognizeTextOnDevice(InputImage.fromBitmap(croppedBitmap, 0)).addOnCompleteListener {
+   imageProxy.close()
+}</code></pre>
+<h3 is-upgraded><strong>端末でアプリを実行する</strong></h3>
+<p>Android StudioのツールバーでRunをクリックします。アプリが起動したら、リアルタイムでカメラに表示されたテキストを認識し始めるはずです。カメラで文字を写してみましょう。</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="テキスト認識機能を追加する" duration="10">
+        <h3 is-upgraded><strong>ML Kit Language Identifierをインスタンス化する</strong></h3>
+<p><code>MainViewModel.kt</code>に次のフィールドを追加します。これは、後の手順で使用する言語識別機能を扱う際に参照する方法です。</p>
+<h3 is-upgraded>MainViewModel.kt</h3>
+<pre><code>private val languageIdentification = LanguageIdentification.getClient()</code></pre>
+<h3 is-upgraded><strong>検出されたテキストでデバイス上の言語識別を実行する</strong></h3>
+<p>ML Kitの言語識別機能を使用して、画像から検出されたテキストの言語を取得します。</p>
+<aside class="special"><p>注: 検出されたテキストは、<strong>sourceText</strong>というオブジェクトに格納されます。これは、一定期間新しい値に更新されていない場合にのみobserverに通知するカスタム<a href="https://developer.android.com/topic/libraries/architecture/livedata" target="_blank"> LiveData</a>オブジェクトです。ここでは、検出されたテキストのちらつきを減らすために50ms間更新されなかった場合にのみ、言語識別関数を呼び出すのに使用します。この実装の詳細については<strong>、SmoothedMutableLiveData</strong>クラスを参照してください。</p>
+</aside>
+<p><code>MainViewModel.kt</code>で<code>sourceLang</code>フィールド定義内のTODOを次のコードに置き換えます。このスニペットは言語識別メソッドを呼び出し、未定義(und)でない場合は結果を割り当てます。</p>
+<h3 is-upgraded>MainViewModel.kt</h3>
+<pre><code>languageIdentification.identifyLanguage(text)
+   .addOnSuccessListener {
+       if (it != &#34;und&#34;)
+           result.value = Language(it)
+   }</code></pre>
+<h3 is-upgraded><strong>端末でアプリを実行する</strong></h3>
+<p>Android StudioのツールバーでRunをクリックします。アプリが起動したら、リアルタイムでカメラに表示されたテキストを認識し始めるはずです。カメラで文字を写してみましょう。</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="翻訳機能の追加" duration="10">
+        <p><code>MainViewModel.kt</code>で<code>translate()</code>関数を次のコードに置き換えます。この関数はソース言語の値、ターゲット言語の値、およびソースのテキストを受け取り、翻訳を実行します。選択した言語のモデルがまだダウンロードされていない場合は、<code>downloadModelIfNeeded()</code>を呼んで翻訳を続けます。</p>
+<h3 is-upgraded>MainViewModel.kt</h3>
+<pre><code>private fun translate(): Task&lt;String&gt; {
+   val text = sourceText.value
+   val source = sourceLang.value
+   val target = targetLang.value
+   if (modelDownloading.value != false || translating.value != false) {
+       return Tasks.forCanceled()
+   }
+   if (source == null || target == null || text == null || text.isEmpty()) {
+       return Tasks.forResult(&#34;&#34;)
+   }
+   val sourceLangCode = TranslateLanguage.fromLanguageTag(source.code)
+   val targetLangCode = TranslateLanguage.fromLanguageTag(target.code)
+   if (sourceLangCode == null || targetLangCode == null) {
+       return Tasks.forCanceled()
+   }
+   val options = TranslatorOptions.Builder()
+       .setSourceLanguage(sourceLangCode)
+       .setTargetLanguage(targetLangCode)
+       .build()
+   val translator = translators[options]
+   modelDownloading.setValue(true)
+
+   // Register watchdog to unblock long running downloads
+   Handler().postDelayed({ modelDownloading.setValue(false) }, 15000)
+   modelDownloadTask = translator.downloadModelIfNeeded().addOnCompleteListener {
+       modelDownloading.setValue(false)
+   }
+   translating.value = true
+   return modelDownloadTask.onSuccessTask {
+       translator.translate(text)
+   }.addOnCompleteListener {
+       translating.value = false
+   }
+}</code></pre>
+<h3 is-upgraded><strong>シミュレータでアプリを実行する</strong></h3>
+<p>Android StudioのツールバーでRunをクリックします。アプリが起動したら、以下の動画のようにテキスト認識と識別された言語結果、選択した言語に翻訳されたテキストが表示されるはずです。59種類の言語から好きなものを選択できます。</p>
+<p class="image-container"><img style="width: 601.70px" src="img\8082105d4a563c27.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="おめでとうございます！" duration="5">
+        <p>おめでとうございます！ML Kitを使用して、デバイス上のテキスト認識機能、言語識別機能、そして翻訳機能をアプリに追加しました。カメラの映像からテキストとその言語を認識し、選択した言語にリアルタイムで翻訳できるようになりました。</p>
+<h3 is-upgraded><strong>このコードラボで学んだこと</strong></h3>
+<ul>
+<li>AndroidアプリにML Kitを追加する方法</li>
+<li>ML Kitでデバイス上のテキスト認識機能を使って画像内のテキストを認識する方法</li>
+<li>ML Kitでデバイス上の言語識別機能を使ってテキストの言語を識別する方法</li>
+<li>ML Kitでデバイス上の翻訳機能を使って、テキストを動的に59種類の言語に翻訳する方法</li>
+<li>CameraXをML Kit APIと組み合わせて使う方法</li>
+</ul>
+<h3 is-upgraded><strong>コードラボが終わったら</strong></h3>
+<ul>
+<li>自分のAndroidアプリでML KitとCameraXを使ってみてください！</li>
+</ul>
+<h3 is-upgraded><strong>参考リンク</strong></h3>
+<ul>
+<li><a href="https://developers.google.com/docs/ml-kit" target="_blank">https://developers.google.com/docs/ml-kit</a></li>
+<li><a href="https://developer.android.com/training/camerax" target="_blank">https://developer.android.com/training/camerax</a></li>
+</ul>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/codelab-elements/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/prettify.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/codelab-elements.js"></script>
+
+</body>
+</html>
