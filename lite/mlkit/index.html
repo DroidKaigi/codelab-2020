@@ -66,12 +66,12 @@
       </google-codelab-step>
     
       <google-codelab-step label="ML KitとCameraXの依存を確認する" duration="5">
-        <p><code>app/build.gradle</code>ファイルで、必要なML KitとCameraXの依存が含まれていることを確認します。</p>
+        <p>スタータープロジェクトをAndroid Studioにインポートしましょう。<code>app/build.gradle</code>ファイルで、必要なML KitとCameraXの依存が含まれていることを確認します。</p>
 <pre><code>// CameraX dependencies
 def camerax_version = &#34;1.0.0-beta05&#34;
 implementation &#34;androidx.camera:camera-core:${camerax_version}&#34;
 implementation &#34;androidx.camera:camera-camera2:${camerax_version}&#34;
-implementation &#34;androidx.camera:camera-lifecycle:$camerax_version&#34;
+implementation &#34;androidx.camera:camera-lifecycle:${camerax_version}&#34;
 implementation &#34;androidx.camera:camera-view:1.0.0-alpha12&#34;
 
 // ML Kit dependencies
@@ -93,20 +93,24 @@ implementation &#39;com.google.mlkit:translate:16.0.0&#39;</code></pre>
       <google-codelab-step label="テキスト認識機能を追加する" duration="10">
         <p>次にカメラ映像からアプリがテキストを認識する機能を追加します。</p>
 <h3 is-upgraded><strong>Ml Kit Text Detectorをインスタンス化する</strong></h3>
-<p><code>Textanalyzer.kt</code>の先頭に次のフィールドを追加します。これは、後の手順で使用するテキスト認識機能を扱う際に参照する方法です。</p>
+<p><code>TextRecognition</code>をインスタンス化するため、<code>Textanalyzer.kt</code>の先頭の<code>TODO</code>に次のフィールドを追加します。これは、後の手順で使用するテキスト認識機能を扱う際に参照する方法です。また、不要になったときに<code>detector</code>を閉じられるように<code>detector</code>を<code>lifecycle observer</code>として追加します。</p>
 <h3 is-upgraded>TextAnalyzer.kt</h3>
-<pre><code>private val detector = TextRecognition.getClient()</code></pre>
+<pre><code>private val detector = TextRecognition.getClient()
+
+init {
+   lifecycle.addObserver(detector)
+}</code></pre>
 <h3 is-upgraded><strong>カメラバッファから生成したVision Imageに対してオンデバイス・テキスト認識機能を使う</strong></h3>
-<p>CameraXライブラリは画像認識に使えるカメラからの画像ストリームを提供してくれます。TextAnalyzerクラスの<code>recognizeTextOnDevice()</code>メソッドを置き換えて、ML Kitのテキスト認識機能を画像に適用するようにしましょう。</p>
+<p>CameraXライブラリは画像認識に使えるカメラからの画像ストリームを提供してくれます。TextAnalyzerクラスの<code>recognizeText()</code>メソッドを置き換えて、ML Kitのテキスト認識機能を画像に適用するようにしましょう。</p>
 <h3 is-upgraded>TextAnalyzer.kt</h3>
-<pre><code>private fun recognizeTextOnDevice(
+<pre><code>private fun recognizeText(
    image: InputImage
 ): Task&lt;Text&gt; {
    // Pass image to an ML Kit Vision API
    return detector.process(image)
-       .addOnSuccessListener { visionText -&gt;
+       .addOnSuccessListener { text -&gt;
            // Task completed successfully
-           result.value = visionText.text
+           result.value = text.text
        }
        .addOnFailureListener { exception -&gt;
            // Task failed with an exception
@@ -119,31 +123,41 @@ implementation &#39;com.google.mlkit:translate:16.0.0&#39;</code></pre>
 }</code></pre>
 <p>以下のコードは、上記のメソッドを呼んでテキスト認識を始める方法を示します。<code>analyze()</code>メソッドの最後に追加しましょう。画像の分析が終わったら<code>ImageProxy.close()</code>を呼ばなければいけないことに注意してください。カメラからの映像がそれ以上分析できなくなってしまいます。</p>
 <h3 is-upgraded>TextAnalyzer.kt</h3>
-<pre><code>recognizeTextOnDevice(InputImage.fromBitmap(croppedBitmap, 0)).addOnCompleteListener {
+<pre><code>recognizeText(InputImage.fromBitmap(croppedBitmap, 0)).addOnCompleteListener {
    imageProxy.close()
 }</code></pre>
 <h3 is-upgraded><strong>端末でアプリを実行する</strong></h3>
-<p>Android StudioのツールバーでRunをクリックします。アプリが起動したら、リアルタイムでカメラに表示されたテキストを認識し始めるはずです。カメラで文字を写してみましょう。</p>
+<p>Android StudioのツールバーでRunをクリックします。アプリが起動したら、リアルタイムでカメラに表示されたテキストを認識し始めるはずです。カメラで文字を写してみましょう。アプリがテキストを認識してくれない場合は、一度カメラを何もない場所に向けて認識を「リセット」してみましょう。</p>
 
 
       </google-codelab-step>
     
       <google-codelab-step label="テキスト認識機能を追加する" duration="10">
         <h3 is-upgraded><strong>ML Kit Language Identifierをインスタンス化する</strong></h3>
-<p><code>MainViewModel.kt</code>に次のフィールドを追加します。これは、後の手順で使用する言語識別機能を扱う際に参照する方法です。</p>
+<p><code>MainViewModel.kt</code>はmainフォルダーの中にあります。ファイルを開いて、次のフィールドを<code>MainViewModel.kt</code>に追加しましょう。次の手順ではこの参照を使って言語識別機能を扱います。</p>
 <h3 is-upgraded>MainViewModel.kt</h3>
-<pre><code>private val languageIdentification = LanguageIdentification.getClient()</code></pre>
+<pre><code>private val languageIdentifier = LanguageIdentification.getClient()</code></pre>
+<p>また、ここで取得したクライアントが不要になった際に正しくシャットダウンされることも必要です。<code>ViewModel</code>の<code>onCleared()</code>メソッドをオーバーライドしましょう。</p>
+<h3 is-upgraded>MainViewModel.kt</h3>
+<pre><code>override fun onCleared() {
+   languageIdentifier.close()
+   translators.evictAll()
+}</code></pre>
 <h3 is-upgraded><strong>検出されたテキストでデバイス上の言語識別を実行する</strong></h3>
 <p>ML Kitの言語識別機能を使用して、画像から検出されたテキストの言語を取得します。</p>
 <aside class="special"><p>注: 検出されたテキストは、<strong>sourceText</strong>というオブジェクトに格納されます。これは、一定期間新しい値に更新されていない場合にのみobserverに通知するカスタム<a href="https://developer.android.com/topic/libraries/architecture/livedata" target="_blank"> LiveData</a>オブジェクトです。ここでは、検出されたテキストのちらつきを減らすために50ms間更新されなかった場合にのみ、言語識別関数を呼び出すのに使用します。この実装の詳細については<strong>、SmoothedMutableLiveData</strong>クラスを参照してください。</p>
 </aside>
-<p><code>MainViewModel.kt</code>で<code>sourceLang</code>フィールド定義内のTODOを次のコードに置き換えます。このスニペットは言語識別メソッドを呼び出し、未定義(und)でない場合は結果を割り当てます。</p>
+<p><code>MainViewModel.kt</code>で<code>sourceLang</code>フィールド定義内のTODOを次のコードに置き換えます。このスニペットは言語識別メソッドを呼び出し、未定義(und)でない場合は結果を割り当てます。言語が未定義で返ってくるということは、APIが<a href="https://developers.google.com/ml-kit/language/identification/langid-support" target="_blank">サポートしている言語の一覧</a>をもとに言語を識別することができなかったことを意味します。</p>
 <h3 is-upgraded>MainViewModel.kt</h3>
-<pre><code>languageIdentification.identifyLanguage(text)
-   .addOnSuccessListener {
-       if (it != &#34;und&#34;)
-           result.value = Language(it)
-   }</code></pre>
+<pre><code>val sourceLang = Transformations.switchMap(sourceText) { text -&gt;
+   .addOnSuccessListener {            val result = MutableLiveData&lt;Language&gt;()
+       if (it != &#34;und&#34;)            languageIdentifier.identifyLanguage(text)
+           result.value = Language(it)                .addOnSuccessListener { languageCode -&gt;
+   }                    if (languageCode != &#34;und&#34;)
+                result.value = Language(languageCode)
+        }
+    result
+}</code></pre>
 <h3 is-upgraded><strong>端末でアプリを実行する</strong></h3>
 <p>Android StudioのツールバーでRunをクリックします。アプリが起動したら、リアルタイムでカメラに表示されたテキストを認識し始めるはずです。カメラで文字を写してみましょう。</p>
 
