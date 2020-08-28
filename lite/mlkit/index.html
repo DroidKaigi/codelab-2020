@@ -150,13 +150,13 @@ init {
 <p><code>MainViewModel.kt</code>で<code>sourceLang</code>フィールド定義内のTODOを次のコードに置き換えます。このスニペットは言語識別メソッドを呼び出し、未定義(und)でない場合は結果を割り当てます。言語が未定義で返ってくるということは、APIが<a href="https://developers.google.com/ml-kit/language/identification/langid-support" target="_blank">サポートしている言語の一覧</a>をもとに言語を識別することができなかったことを意味します。</p>
 <h3 is-upgraded>MainViewModel.kt</h3>
 <pre><code>val sourceLang = Transformations.switchMap(sourceText) { text -&gt;
-   .addOnSuccessListener {            val result = MutableLiveData&lt;Language&gt;()
-       if (it != &#34;und&#34;)            languageIdentifier.identifyLanguage(text)
-           result.value = Language(it)                .addOnSuccessListener { languageCode -&gt;
-   }                    if (languageCode != &#34;und&#34;)
-                result.value = Language(languageCode)
-        }
-    result
+   val result = MutableLiveData&lt;Language&gt;()
+   languageIdentifier.identifyLanguage(text)
+       .addOnSuccessListener { languageCode -&gt;
+           if (languageCode != &#34;und&#34;)
+               result.value = Language(languageCode)
+       }
+   result
 }</code></pre>
 <h3 is-upgraded><strong>端末でアプリを実行する</strong></h3>
 <p>Android StudioのツールバーでRunをクリックします。アプリが起動したら、リアルタイムでカメラに表示されたテキストを認識し始めるはずです。カメラで文字を写してみましょう。</p>
