@@ -3,13 +3,13 @@
   "format": "html",
   "prefix": "https://storage.googleapis.com",
   "mainga": "UA-49880327-14",
-  "updated": "2020-03-02T08:41:08Z",
+  "updated": "2020-08-28T12:27:01Z",
   "id": "",
   "duration": 100,
   "title": "Multi-Modularizing Apps",
   "authors": "DroidKaigi Committee",
   "summary": "How to split an existing app into multiple modules.",
-  "source": "1zV6emkBT6VZkcwSQDuh3806uobQM5Cf2dgxdsvpabDM",
+  "source": "1nZ5S4nyO42W553er_-a1ZiL5eLNOP5JvmjHQmsywnVI",
   "theme": "androd",
   "status": [
     "draft"

@@ -3,13 +3,13 @@
   "format": "html",
   "prefix": "https://storage.googleapis.com",
   "mainga": "UA-49880327-14",
-  "updated": "2020-02-20T02:07:08Z",
+  "updated": "2020-08-28T12:25:31Z",
   "id": "",
   "duration": 100,
   "title": "既存のアプリをマルチモジュール化する",
   "authors": "DroidKaigi Committee",
   "summary": "既存のAndroidアプリをmulti-module project化する方法",
-  "source": "1xPwPzLxTcEfr6yKmvRegJ4585vQnJv9KPQvdAoAa16c/edit#",
+  "source": "1sipeIiNgTZ3d7tRgwrN3CzzLboDyXb8kl5at5MKWS6w",
   "theme": "androd",
   "status": [
     "draft"

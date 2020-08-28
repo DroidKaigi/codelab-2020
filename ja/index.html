@@ -317,7 +317,7 @@ import retrofit2.http.Query</code></pre>
 <p>を</p>
 <pre><code>       &lt;variable
             name=&#34;repo&#34;
-            type=&#34;LiveData&amp;lt;Resource&amp;lt;List&amp;lt;Repo&gt;&gt;&gt;&#34; /&gt;</code></pre>
+            type=&#34;LiveData&amp;lt;Resource&amp;lt;Repo&gt;&gt;&gt;&#34; /&gt;</code></pre>
 <p>に変更します。</p>
 <h3 is-upgraded>user_fragment.xmlの修正</h3>
 <pre><code>      &lt;variable
@@ -325,7 +325,7 @@ import retrofit2.http.Query</code></pre>
             type=&#34;com.android.example.model.Resource&#34; /&gt;</code></pre>
 <p>を</p>
 <pre><code>       &lt;variable
-            name=&#34;repo&#34;
+            name=&#34;user&#34;
             type=&#34;LiveData&amp;lt;Resource&amp;lt;User&gt;&gt;&#34; /&gt;</code></pre>
 <p>に変更します。</p>
 <p>これで、api関連クラスでdata/api moduleに移動できていないのはAuthenticationInterceptorだけになりました。</p>

@@ -315,7 +315,7 @@ import retrofit2.http.Query</code></pre>
 <p>to this</p>
 <pre><code>       &lt;variable
             name=&#34;repo&#34;
-            type=&#34;LiveData&amp;lt;Resource&amp;lt;List&amp;lt;Repo&gt;&gt;&gt;&#34; /&gt;</code></pre>
+            type=&#34;LiveData&amp;lt;Resource&amp;lt;Repo&gt;&gt;&gt;&#34; /&gt;</code></pre>
 <h3 is-upgraded>Fixing user_fragment.xml</h3>
 <p>Change this</p>
 <pre><code>      &lt;variable
@@ -323,7 +323,7 @@ import retrofit2.http.Query</code></pre>
             type=&#34;com.android.example.model.Resource&#34; /&gt;</code></pre>
 <p>to this</p>
 <pre><code>       &lt;variable
-            name=&#34;repo&#34;
+            name=&#34;user&#34;
             type=&#34;LiveData&amp;lt;Resource&amp;lt;User&gt;&gt;&#34; /&gt;</code></pre>
 <p>As a result, AuthenticationInterceptor becomes the only api-related class that hasn&#39;t been migrated to the data/api module.</p>
 <p class="image-container"><img style="width: 274.00px" src="img\11e06c601c108ac8.png"></p>
